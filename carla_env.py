@@ -34,6 +34,7 @@ def random_spawn_point_corner(spawn_point, start: "dict", corner: "dict", end: "
         spawn_point = carla.Transform(carla.Location(start['location']['x'], start['location']['y']+rand_dist, start['location']['z']), spawn_point.rotation)
     return spawn_point
 
+
 # CarEnv Class
 class CarEnv:
 
@@ -91,7 +92,7 @@ class CarEnv:
             try:
                 self.vehicle.set_transform(spawn_point)
                 self.start_point = spawn_point
-                print(f'location: {self.vehicle.get_location()}')
+                #print(f'location: {self.vehicle.get_location()}')
                 #print(f'location: {spawn_point.location}')
                 return
             except:
@@ -171,7 +172,7 @@ class CarEnv:
         lat_err  = x_road[0]        
         if location.x > 20: # Goal
             isDone = True
-            reward = 100
+            reward = 1
             
         elif np.abs( lat_err ) > 1:  # Unsafe
             isDone = True

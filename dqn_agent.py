@@ -18,21 +18,17 @@ from keras.optimizers import Adam
 from keras.callbacks import TensorBoard
 
 # DQN hyper parameters
-REPLAY_MEMORY_SIZE = 5_000
-MIN_REPLAY_MEMORY_SIZE = 27
+REPLAY_MEMORY_SIZE     = 5_000
+MIN_REPLAY_MEMORY_SIZE = 100
 MINIBATCH_SIZE = 16
 PREDICTION_BATCH_SIZE = 1
 UPDATE_TARGET_EVERY = 5
-DISCOUNT = 0.99
-epsilon = 1
-EPSILON_DECAY = 0.95 ## 0.9975 99975
-MIN_EPSILON = 0.001
+DISCOUNT = 1 #0.99 # Should be 1 for risk quantification
 
 MEMORY_FRACTION = 0.8 # GPU
 
 # Logging
 MODEL_NAME = "DQN_test"
-
 
 
 # Modified Tensorboard class
@@ -107,7 +103,7 @@ class DQNAgent:
                     Dense(ACTION_NUM),  
                 ])
         
-        model.compile(loss=my_loss_fn, optimizer=Adam(learning_rate=0.01), metrics=["accuracy"])
+        model.compile(loss=self.my_loss_fn, optimizer=Adam(learning_rate=1e-4), metrics=["accuracy"])
         return model  
 
     def update_replay_memory(self, transition):
@@ -163,11 +159,11 @@ class DQNAgent:
             self.target_update_counter = 0
 
 
-###################################################################################
-# Custom loss function
-def my_loss_fn(y_true, y_pred):
-    squared_difference = tf.square(y_true - y_pred)
-    return tf.reduce_mean(squared_difference, axis=-1)  # Note the `axis=-1`
+    ###################################################################################
+    # Custom loss function
+    def my_loss_fn(self, y_true, y_pred):
+        squared_difference = tf.square(y_true - y_pred)
+        return tf.reduce_mean(squared_difference, axis=-1)  # Note the `axis=-1`
 
 
 ###################################################################################
@@ -219,11 +215,20 @@ class PlanerEnv:
 
 
 
+##############################################################################
+### Main algorithm ###########################################################
 if __name__ == '__main__':
 
-    # For stats
-    ep_rewards = []
-    average_rewards = []
+    #########################
+    # Training option
+    EPISODES = 5000    
+    AGGREGATE_STATS_EVERY = 20  # episodes  
+
+    #########################
+    # Hyper parameters    
+    EPSILON_DECAY = 0.95 ## 0.9975 99975
+    MIN_EPSILON = 0.001
+
 
     # For more repetitive results
     random.seed(1)
@@ -233,12 +238,13 @@ if __name__ == '__main__':
     
     # Create agent and environment
     env   = PlanerEnv()
-
     agent = DQNAgent(obs_dim=3, action_num=3)
 
+    ##############################
     # Iterate over episodes
-    EPISODES = 5000    
-    AGGREGATE_STATS_EVERY = 20  # episodes  
+    epsilon = 1
+    ep_rewards = []
+    average_rewards = []
     
     for episode in tqdm(range(1, EPISODES + 1), ascii=True, unit='episodes'):
     #for episode in range(1, EPISODES + 1):
@@ -279,7 +285,9 @@ if __name__ == '__main__':
             epsilon *= EPSILON_DECAY
             epsilon = max(MIN_EPSILON, epsilon)
 
-        # Log stats     
+        print(EPSILON_DECAY)
+
+        # Log stats
         ep_rewards.append(episode_reward)
         if not episode % AGGREGATE_STATS_EVERY or episode == 1:
             average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY:])/len(ep_rewards[-AGGREGATE_STATS_EVERY:])
