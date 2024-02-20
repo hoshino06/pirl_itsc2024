@@ -79,6 +79,9 @@ def main_alg(env, agent, trainOption):
 
             # update current state
             current_state = new_state
+            
+            image = env.image_queue.get()
+            env.process_img(image)
         
         # Decay epsilon
         if epsilon > MIN_EPSILON:
@@ -91,6 +94,7 @@ def main_alg(env, agent, trainOption):
             average_reward = sum(ep_rewards[-AGGREGATE_STATS_EVERY:])/len(ep_rewards[-AGGREGATE_STATS_EVERY:])
             average_rewards.append(average_reward)
             #agent.tensorboard.update_stats(reward_avg=average_reward, reward_min=min_reward, reward_max=max_reward, epsilon=epsilon)
+
 
     return agent, ep_rewards, average_rewards, q_values
 
@@ -113,8 +117,9 @@ if __name__ == '__main__':
     #tf.random.set_seed(1) # for Tensorflow 2.x    
     
     # Train option
-    TrainOp = {'MaxEpisodes': 20,
-               'ScoreAveragingWindowLength': 5} # 50_000, 100
+
+    TrainOp = {'MaxEpisodes': 50_000,
+               'ScoreAveragingWindowLength': 100} # 50_000, 100
     
     
     #######################
@@ -137,16 +142,14 @@ if __name__ == '__main__':
         # Save results
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         file_name = f"data_{current_time}.pickle"
-        data = {'agent': agent, 
-                'episodic_rewards': ep_rewards,
-                'averaged_rewards': avg_rewards,
-                'episodic_q0': qs}
-        '''data = {
-            'max_episodes': TrainOp['MaxEpisodes'],
+
+        agent.save('model/my_model.keras')
+        data = {
             'episodic_rewards': ep_rewards,
             'averaged_rewards': avg_rewards,
             'episodic_q0': qs
-            }'''
+        }
+        
         with open('data/'+file_name, 'wb') as f:
             pickle.dump(data, f)        
         

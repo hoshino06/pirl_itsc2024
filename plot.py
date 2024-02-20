@@ -1,19 +1,19 @@
 import random
-import numpy as np
 from tqdm import tqdm # for showing progress bar
-import pickle
 from datetime import datetime
 
+import numpy as np
+import pickle
+
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 
-from carla_env import CarEnv
-from dqn_agent import DQNAgent
+import tensorflow as tf
+from keras.models import load_model
 
-
-
-
-
+# Custom loss function
+def my_loss_fn(y_true, y_pred):
+    squared_difference = tf.square(y_true - y_pred)
+    return tf.reduce_mean(squared_difference, axis=-1)  # Note the `axis=-1`
 
 
 def plot_result(file_path):
@@ -21,14 +21,15 @@ def plot_result(file_path):
         with open(file_path, 'rb') as file:
             data = pickle.load(file)
             
-        print(data)
-        print("agent" in data)
-        print('averaged_rewards' in data)
-        print('episodic_q0' in data)
+        new_model = load_model('model/my_model.keras', custom_objects={'my_loss_fn': my_loss_fn})
+
+        with open(file_path, 'rb') as file:
+            data = pickle.load(file)
+            
         fig, axs = plt.subplots(1, 2)
         
         if 'averaged_rewards' in data and len(data['averaged_rewards']) > 0:
-            X = np.linspace(start=0, stop=data['max_episodes'], num=len(data['averaged_rewards']))
+            X = np.linspace(start=0, stop=50_000, num=len(data['averaged_rewards']))
             axs[0].set_xlabel("episode")
             axs[0].set_ylabel("avg_reward")
         
@@ -37,7 +38,7 @@ def plot_result(file_path):
 
 
         if 'episodic_q0' in data and  len(data['episodic_q0']) > 0:
-            X2 = np.linspace(start=0, stop=data['max_episodes'], num=len(data['episodic_q0']))
+            X2 = np.linspace(start=0, stop=50_000, num=len(data['episodic_q0']))
             axs[1].set_xlabel("episode")
             axs[1].set_ylabel("q_value")
         
@@ -52,5 +53,6 @@ def plot_result(file_path):
     return
 
 if __name__ == '__main__':
-    file_path = "data/data_20240213_162049.pickle"
-    plot_result(file_path)
+    data_file_path = "data/data_20240219_082529.pickle"
+    plot_result(data_file_path)
+

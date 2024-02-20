@@ -157,6 +157,9 @@ class DQNAgent:
         if self.target_update_counter > UPDATE_TARGET_EVERY:
             self.target_model.set_weights(self.model.get_weights())
             self.target_update_counter = 0
+            
+    def save(self, path):
+        self.model.save(path)
 
 
     ###################################################################################
@@ -304,4 +307,3 @@ if __name__ == '__main__':
     agent.model.save(f'models/{MODEL_NAME}__{max_reward:_>7.2f}max_{average_reward:_>7.2f}avg_{min_reward:_>7.2f}min__{int(time.time())}.model')
 
 
-                        
