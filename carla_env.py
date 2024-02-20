@@ -71,6 +71,7 @@ class CarEnv:
         bp = blueprint_library.filter('model3')[0]
         new_spawn_point = self.world.get_map().get_spawn_points()[1]
         self.vehicle = self.world.spawn_actor(bp, new_spawn_point)
+        
         self.actor_list.append(self.vehicle)
         if autopilot: 
             self.vehicle.set_autopilot(True)  # if you just wanted some NPCs to drive.
@@ -82,17 +83,24 @@ class CarEnv:
         self.state_dim  = len(initState)
 
     def generate_random_spawn_point(self):
-        new_spawn_point = self.world.get_map().get_spawn_points()[1]
+        world_map = self.world.get_map()
+        new_spawn_point = world_map.get_spawn_points()[1]
         start_point = {'location':{'x':-7.530000, 'y':270.729980, 'z':0.500000}, 'rotation':{'pitch':0.000000,'yaw':89.99954,'roll':0.000000}}
         corner_point = {'location':{'x':-7.390556, 'y':303.114441, 'z':0.520332}, 'rotation':{'pitch':0.000000,'yaw':0.000000,'roll':0.000000}}
         end_point = {'location':{'x':25.694059, 'y':306.545349, 'z':0.521810},'rotation':{'pitch':0.000000,'yaw':0.000,'roll':0.000000}}
-        spawn_point = random_spawn_point_corner(new_spawn_point,start_point, corner_point, end_point)
-        
+        spawn_point_trans = random_spawn_point_corner(new_spawn_point,start_point, corner_point, end_point)
+        way_point = world_map.get_waypoint(spawn_point_trans.location, project_to_road=True)
+        x_rd   = way_point.transform.location.x
+        y_rd   = way_point.transform.location.y
+        yaw_rd = way_point.transform.rotation.yaw
+        spawn_point_trans = carla.Transform(carla.Location(x_rd, y_rd,0.50000), 
+                                      carla.Rotation(0, yaw_rd, 0))        
         while True:
             try:
-                self.vehicle.set_transform(spawn_point)
-                self.start_point = spawn_point
-                #print(f'location: {self.vehicle.get_location()}')
+                self.vehicle.set_transform(spawn_point_trans)
+                self.start_point = spawn_point_trans
+                print(f'location: {self.vehicle.get_location()}')
+                print(f'location: {self.vehicle.get_rotation()}')
                 #print(f'location: {spawn_point.location}')
                 return
             except:
@@ -211,8 +219,10 @@ class CarEnv:
 
     def getRoadState(self):
         
-        # Get vehicle location        
+        # Get vehicle location
         vehicle_trans = self.vehicle.get_transform()  
+
+            
         vehicle_locat = vehicle_trans.location
         vehicle_rotat = vehicle_trans.rotation 
         x   = vehicle_locat.x
