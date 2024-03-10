@@ -108,7 +108,7 @@ if __name__ == '__main__':
     #####################
     # Settings
     #####################
-    carla_port = 4000
+    carla_port = 5000
     time_step  = 0.05
 
     # For more repetitive results
