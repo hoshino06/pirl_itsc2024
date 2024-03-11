@@ -161,3 +161,4 @@ cython_debug/
 
 *~
 pirl_carla/logs
+rl_carla/logs
