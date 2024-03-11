@@ -15,7 +15,7 @@ from keras.optimizers import Adam
 
 # PIRL agent
 from rl_agent.DQN import RLagent, agentOptions, train, trainOptions
-from env.carla_env import CarEnv
+from rl_env.carla_env import CarEnv
 
 # carla environment
 class Env(CarEnv):
@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
     ###########################
     # Environment
-    carla_port = 3000
+    carla_port = 3100
     time_step  = 0.05    
 
     env    = Env(port=carla_port, time_step=time_step)
