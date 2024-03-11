@@ -15,7 +15,7 @@ from keras.optimizers import Adam
 
 # PIRL agent
 from pirl_agent.DQN import PIRLagent, agentOptions, train, trainOptions, pinnOptions
-from env.carla_env import CarEnv
+from rlenv.carla_env import CarEnv
 
 # carla environment
 class Env(CarEnv):
