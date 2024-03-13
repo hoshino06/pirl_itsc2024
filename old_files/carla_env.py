@@ -12,7 +12,6 @@ import numpy as np
 import queue
 import cv2 # for camera
 import math
-import time
 
 # Load carla module
 path_to_carla = os.path.expanduser("~/carla/carla_0_9_15")
@@ -67,38 +66,13 @@ def load_custom_map(xodr_path, client):
         print('file not found.')
     return world
 
-def draw_path(location, world, life_time=1.0, string = None):
-    if string == None:
-        world.debug.draw_string(location, 'O', draw_shadow=False,
-                                color=carla.Color(r=0, g=255, b=0), life_time=life_time,
-                                persistent_lines=True)
-    elif string != None:
-        world.debug.draw_string(location, string, draw_shadow=False,
-                                color=carla.Color(r=0, g=255, b=0), life_time=life_time,
-                                persistent_lines=True)
-     
 def fetch_all_spawn_point(world):
     map = world.get_map()
     all_lanes = map.get_topology()
     all_wp_list = []
     for lane in all_lanes:
         start_wp = lane[0]
-        if start_wp.lane_width > 20:
-            wp_list = start_wp.next_until_lane_end(1.0)
-            all_wp_list += wp_list
-            """
-            for sp in wp_list:
-                draw_path(sp.transform.location, world, life_time= 600)
-            set_spectator(world, wp_list[0].transform)
-            print(start_wp.road_id, start_wp.lane_id, start_wp.section_id, start_wp.lane_width)
-            exit()
-            """
-        else:
-            continue
-    #for sp in all_wp_list:
-    #    draw_path(sp.transform.location, world, life_time= 600)    
-    #set_spectator(world, all_wp_list[0].transform)
-    
+        all_wp_list += start_wp.next_until_lane_end(1.0)
     all_sp_transform_list = []
     for wp in all_wp_list:
         spawn_point = wp.transform
@@ -111,20 +85,6 @@ def random_spawn_custom_map(all_spawn_point_list):
     rand_1 = np.random.randint(0,len(all_spawn_point_list))
     return all_spawn_point_list[rand_1]
 
-def spectate(world):
-    while(True):
-        t = world.get_spectator().get_transform()
-        #coordinate_str = "(x,y) = ({},{})".format(t.location.x, t.location.y)
-        coordinate_str = "(x,y,z) = ({},{},{})".format(t.location.x, t.location.y,t.location.z)
-        print (coordinate_str)
-        time.sleep(100)
-        
-def set_spectator(world, transform):
-    spectator = world.get_spectator()
-    spectator.set_transform(transform)
-    return
-
-        
 # CarEnv Class
 class CarEnv:
 
@@ -132,7 +92,7 @@ class CarEnv:
     step_S_pool = np.linspace(-0.8,0.8, num=5) # steering angle values
     action_num  = len(step_T_pool) * len(step_S_pool)
 
-    def __init__(self, port=2000, time_step   = 0.01, autopilot=False, custom_map_path = None, initial_speed = 10):
+    def __init__(self, port=2000, time_step   = 0.01, autopilot=False, custom_map_path = None):
         """
         Connect to Carla server, spawn vehicle, and initialize variables 
         """
@@ -145,15 +105,16 @@ class CarEnv:
         self.custom_map_path = custom_map_path
         self.all_sp = None
         # load custom map
-        self.initial_speed = initial_speed
         if self.custom_map_path != None:
             self.world = load_custom_map(self.custom_map_path, self.client)
             self.all_sp = fetch_all_spawn_point(self.world)
-            #for sp in self.all_sp:
-            #    draw_path(sp.location, self.world, life_time= 600)
         else:
             #if not self.world.get_map().name == 'Carla/Maps/Town02':
             self.world = self.client.load_world('Town02')
+            #self.world = self.client.generate_opendrive_world(opendrive = "Carla/Maps/Town02")
+            
+            #print(f"Map Layer:{dir(carla.MapLayer)}")
+            #exit()
                 
         # Set synchronous mode settings
         new_settings = self.world.get_settings()
@@ -166,9 +127,7 @@ class CarEnv:
         self.actor_list = []
 
         # Create vehicle actor
-        
         blueprint_library = self.world.get_blueprint_library()
-        self.bl = blueprint_library
         bp = blueprint_library.filter('model3')[0]
         new_spawn_point = self.world.get_map().get_spawn_points()[1]
         self.vehicle = self.world.spawn_actor(bp, new_spawn_point)
@@ -185,37 +144,16 @@ class CarEnv:
         cam_bp.set_attribute('image_size_x', f'{self.IM_WIDTH}')
         cam_bp.set_attribute('image_size_y', f'{self.IM_HEIGHT}')
         cam_bp.set_attribute('fov', '110')
-        if custom_map_path == None:
-            spawn_point = carla.Transform(carla.Location(x=-7.390556, y=312.114441, z=10.220332), carla.Rotation(pitch=-20, yaw=-45))
-            sensor = self.world.spawn_actor(cam_bp, spawn_point)
-            self.image_queue = queue.Queue()
-            sensor.listen(self.image_queue.put)
-            self.actor_list.append(sensor)  
+        spawn_point = carla.Transform(carla.Location(x=-7.390556, y=312.114441, z=10.220332), carla.Rotation(pitch=-20, yaw=-45))
+        sensor = self.world.spawn_actor(cam_bp, spawn_point)
+        self.image_queue = queue.Queue()
+        sensor.listen(self.image_queue.put)
+        self.actor_list.append(sensor)  
 
         # Run one step and store state dimension
         initState = self.reset()
         self.state_dim  = len(initState)
 
-    def set_camera(self, blueprint_library, transform):
-        if len(self.actor_list) == 1:
-            self.IM_WIDTH, self.IM_HEIGHT = 640, 480
-            cam_bp = blueprint_library.find('sensor.camera.rgb')
-            cam_bp.set_attribute('image_size_x', f'{self.IM_WIDTH}')
-            cam_bp.set_attribute('image_size_y', f'{self.IM_HEIGHT}')
-            cam_bp.set_attribute('fov', '110')
-            camera_loc = carla.Location(transform.location.x, transform.location.y, transform.location.z + 10)
-            camera_rot = carla.Rotation(pitch = -20, yaw = transform.rotation.yaw)
-            spawn_point = carla.Transform(camera_loc, camera_rot)
-            sensor = self.world.spawn_actor(cam_bp, spawn_point)
-            self.image_queue = queue.Queue()
-            sensor.listen(self.image_queue.put)
-            self.actor_list.append(sensor)
-        else:
-            camera_loc = carla.Location(transform.location.x, transform.location.y, transform.location.z + 10)
-            camera_rot = carla.Rotation(pitch = -20, yaw = transform.rotation.yaw)
-            spawn_point = carla.Transform(camera_loc, camera_rot)
-            self.actor_list[1].set_transform(spawn_point)
-        
     def generate_random_spawn_point(self):
         world_map = self.world.get_map()
         new_spawn_point = world_map.get_spawn_points()[1]
@@ -224,11 +162,11 @@ class CarEnv:
         end_point = {'location':{'x':25.694059, 'y':306.545349, 'z':0.521810},'rotation':{'pitch':0.000000,'yaw':0.000,'roll':0.000000}}
         if self.custom_map_path != None:
             spawn_point = random_spawn_custom_map(self.all_sp)
-            self.set_camera(self.bl, spawn_point)
             #self.vehicle.set_transform(spawn_point)
             self.start_point = spawn_point
             #print(spawn_point.location)
         else:
+            
             spawn_point_trans = random_spawn_point_corner(new_spawn_point,start_point, corner_point, end_point)
             way_point = world_map.get_waypoint(spawn_point_trans.location, project_to_road=True)
             x_rd   = way_point.transform.location.x
@@ -273,7 +211,7 @@ class CarEnv:
         
                 
         # Initialization of vehicle vlocity
-        vx = self.initial_speed
+        vx = 10
         vy = 0
         world_vx, world_vy = self.local2world(vx, vy, rotation.yaw)        
         velocity_world = carla.Vector3D(world_vx, world_vy, 0)
@@ -375,7 +313,6 @@ class CarEnv:
             y_dis = cur_y + math.sin(yaw)*interval
             waypoint = world_map.get_waypoint(carla.Location(x_dis, y_dis, cur_z),project_to_road=True, lane_type=(carla.LaneType.Driving))
             wp_transform = waypoint.transform
-            #draw_path(wp_transform.location, self.world, life_time=1.0)
             wp_transform_list.append(wp_transform)
             relative_x.append(wp_transform.location.x-x)
             relative_y.append(wp_transform.location.y-y)
@@ -396,14 +333,6 @@ class CarEnv:
         world_map = self.world.get_map()
         
         way_point = world_map.get_waypoint(vehicle_locat, project_to_road=True)
-        if way_point.lane_width < 20:
-            right_way_point = way_point.get_right_lane()
-            left_way_point = way_point.get_left_lane()
-            way_point = right_way_point if right_way_point.lane_width > left_way_point.lane_width else left_way_point
-                
-        #assert way_point.lane_width > 20, "waypoint from wrong lane"
-        
-        #draw_path(way_point.transform.location, self.world, life_time=10.0)
         wp_transform = way_point.transform
         interval = 0.5
         next_num = 5
@@ -485,14 +414,13 @@ class CarEnv:
 ##############################################################################
 if __name__ == '__main__': 
    
-    carla_port = 5000
+    carla_port = 6000
     time_step  = 0.01
     
     try:
         rl_env = CarEnv(port= carla_port, 
-                        time_step=time_step, 
-                        custom_map_path="/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr") #, autopilot=True)
-        #spectate(rl_env.world)
+                        time_step=time_step) 
+                        #custom_map_path="/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/test.xodr") #, autopilot=True)
         while True:
             rl_env.reset()
             isDone = False
@@ -505,3 +433,4 @@ if __name__ == '__main__':
     finally:
         if 'rl_env' in locals():
             rl_env.destroy()
+

@@ -149,6 +149,24 @@ class RLagent:
                 self.epsilon = max( self.agentOp['EPSILON_MIN'], self.epsilon)
 
 
+    def load_weights(self, ckpt_dir, ckpt_idx=None):
+
+        checkpoint = tf.train.Checkpoint(model = self.model)
+        manager    = tf.train.CheckpointManager(checkpoint, 
+                                                directory=ckpt_dir, 
+                                                max_to_keep=1000)
+        if not ckpt_idx or ckpt_idx == 'latest': 
+            ckpt_path = manager.latest_checkpoint
+        else:
+            ckpt_path = manager.checkpoints[ckpt_idx]
+   
+        checkpoint.restore(ckpt_path)
+        
+        print(f'Agent loaded weights stored in {ckpt_path}')
+        
+        return ckpt_path    
+
+
 ###################################################################################
 # Learning Algorithm
 
@@ -156,8 +174,8 @@ def trainOptions(
         EPISODES      = 50, 
         LOG_DIR       = None,
         SHOW_PROGRESS = True,
-        SAVE_AGENTS   = True,
-        SAVE_FREQ     = 1,
+        SAVE_AGENTS   = False,
+        SAVE_FREQ     = 1000,
         ):
     
     trainOp = {
@@ -212,11 +230,12 @@ def train(agent, env, trainOp):
 
         # Check point (for recording weights)
         ckpt    = tf.train.Checkpoint(model=agent.model)
-        manager = tf.train.CheckpointManager(ckpt, trainOp['LOG_DIR'], trainOp['EPISODES'],
+        manager = tf.train.CheckpointManager(ckpt, trainOp['LOG_DIR'], 
+                                             trainOp['EPISODES'],
                                              checkpoint_name='weights')
 
     # Iterate episodes
-    if trainOp['SHOW_PROGRESS']:     
+    if trainOp['SHOW_PROGRESS']:
         iterator = tqdm(range(1, trainOp['EPISODES'] + 1), ascii=True, unit='episodes')
     else:
         iterator = range(1, trainOp['EPISODES'] + 1)
@@ -229,7 +248,7 @@ def train(agent, env, trainOp):
             with summary_writer.as_default():
                 tf.summary.scalar('Episode Reward', ep_reward, step=episode)                    
                 tf.summary.scalar('Episode Q0',     ep_q0,     step=episode)                    
-            if episode % trainOp['SAVE_FREQ'] == 0:
+            if trainOp['SAVE_AGENTS'] and episode % trainOp['SAVE_FREQ'] == 0:
                 manager.save(checkpoint_number=episode) 
 
-    return 
+    return
