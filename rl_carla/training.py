@@ -62,8 +62,11 @@ if __name__ == '__main__':
     # Environment
     carla_port = 3000
     time_step  = 0.05    
+    map_for_training = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
 
-    env    = Env(port=carla_port, time_step=time_step)
+    env    = Env(port=carla_port, time_step=time_step,
+                 custom_map_path = map_for_training
+                 )
     actNum = env.action_num
     obsNum = len(env.reset())
 
@@ -106,5 +109,14 @@ if __name__ == '__main__':
 
     ######################################
     # Train 
-    train(agent, env, trainOp)
+    try:  
+        train(agent, env, trainOp)
+        
+    except KeyboardInterrupt:
+        print('\nCancelled by user - training.py.')
+
+    finally:
+        if 'env' in locals():
+            env.destroy()
+
     

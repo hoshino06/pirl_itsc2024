@@ -24,23 +24,8 @@ sys.path.append(glob.glob(path_to_carla + '/PythonAPI/carla/dist/carla-*%d.%d-%s
 
 import carla
 
-
-def random_spawn_point_corner(spawn_point, start: "dict", corner: "dict", end: "dict"):
-    dist_1 = abs(corner['location']['y']-start['location']['y'])
-    dist_2 = abs(end['location']['x']-corner['location']['x'])
-    distance = dist_1 + dist_2
-    eps = np.random.rand()
-    rand_dist = eps*distance
-    if rand_dist > dist_1:
-        # 2nd phase, moving in x direction
-        spawn_point = carla.Transform(carla.Location((end['location']['x']-(distance-rand_dist)), end['location']['y'], end['location']['z']), carla.Rotation(end['rotation']['pitch'], end['rotation']['yaw'], end['rotation']['roll']))
-    else:
-        # 1nd phase, moving in y direction
-        spawn_point = carla.Transform(carla.Location(start['location']['x'], start['location']['y']+rand_dist, start['location']['z']), spawn_point.rotation)
-    return spawn_point
-
-
-    
+############################################
+# Load custom map (racing track)    
 def load_custom_map(xodr_path, client):
     if os.path.exists(xodr_path):
         with open(xodr_path, encoding='utf-8') as od_file:
@@ -64,7 +49,7 @@ def load_custom_map(xodr_path, client):
                 enable_mesh_visibility=True))
     else:
         print(os.getcwd())
-        print('file not found.')
+        raise FileNotFoundError('Custom map file not found')
     return world
 
 def draw_path(location, world, life_time=1.0, string = None):
@@ -105,8 +90,25 @@ def fetch_all_spawn_point(world):
         spawn_point.location.z = 0.500
         all_sp_transform_list.append(spawn_point)
     return all_sp_transform_list
-    
 
+########################################
+# Get spawn point for Town 2 
+def random_spawn_point_corner(spawn_point, start: "dict", corner: "dict", end: "dict"):
+    dist_1 = abs(corner['location']['y']-start['location']['y'])
+    dist_2 = abs(end['location']['x']-corner['location']['x'])
+    distance = dist_1 + dist_2
+    eps = np.random.rand()
+    rand_dist = eps*distance
+    if rand_dist > dist_1:
+        # 2nd phase, moving in x direction
+        spawn_point = carla.Transform(carla.Location((end['location']['x']-(distance-rand_dist)), end['location']['y'], end['location']['z']), carla.Rotation(end['rotation']['pitch'], end['rotation']['yaw'], end['rotation']['roll']))
+    else:
+        # 1nd phase, moving in y direction
+        spawn_point = carla.Transform(carla.Location(start['location']['x'], start['location']['y']+rand_dist, start['location']['z']), spawn_point.rotation)
+    return spawn_point
+
+######################################
+# Get spawn point for racing track
 def random_spawn_custom_map(all_spawn_point_list):
     rand_1 = np.random.randint(0,len(all_spawn_point_list))
     return all_spawn_point_list[rand_1]
@@ -124,7 +126,8 @@ def set_spectator(world, transform):
     spectator.set_transform(transform)
     return
 
-        
+
+###############################################################################        
 # CarEnv Class
 class CarEnv:
 
@@ -132,7 +135,10 @@ class CarEnv:
     step_S_pool = np.linspace(-0.8,0.8, num=5) # steering angle values
     action_num  = len(step_T_pool) * len(step_S_pool)
 
-    def __init__(self, port=2000, time_step   = 0.01, autopilot=False, custom_map_path = None, initial_speed = 10):
+    def __init__(self, 
+                 port=2000, time_step = 0.01, autopilot=False, 
+                 custom_map_path = None, 
+                 initial_speed = 10):
         """
         Connect to Carla server, spawn vehicle, and initialize variables 
         """
@@ -141,9 +147,9 @@ class CarEnv:
         self.client = carla.Client("localhost", port)
         self.client.set_timeout(10.0)
         self.world = self.client.get_world()
-        self.start_point = None
         self.custom_map_path = custom_map_path
         self.all_sp = None
+
         # load custom map
         self.initial_speed = initial_speed
         if self.custom_map_path != None:
@@ -152,8 +158,8 @@ class CarEnv:
             #for sp in self.all_sp:
             #    draw_path(sp.location, self.world, life_time= 600)
         else:
-            #if not self.world.get_map().name == 'Carla/Maps/Town02':
-            self.world = self.client.load_world('Town02')
+            if not self.world.get_map().name == 'Carla/Maps/Town02':
+                self.world = self.client.load_world('Town02')
                 
         # Set synchronous mode settings
         new_settings = self.world.get_settings()
@@ -165,8 +171,7 @@ class CarEnv:
         # Initialization
         self.actor_list = []
 
-        # Create vehicle actor
-        
+        # Create vehicle actor        
         blueprint_library = self.world.get_blueprint_library()
         self.bl = blueprint_library
         bp = blueprint_library.filter('model3')[0]
@@ -179,13 +184,13 @@ class CarEnv:
             print('Vehicle was spawned with auto pilot mode')
         self.autopilot = autopilot
         
-        # Create camera actor
-        self.IM_WIDTH, self.IM_HEIGHT = 640, 480
-        cam_bp = blueprint_library.find('sensor.camera.rgb')
-        cam_bp.set_attribute('image_size_x', f'{self.IM_WIDTH}')
-        cam_bp.set_attribute('image_size_y', f'{self.IM_HEIGHT}')
-        cam_bp.set_attribute('fov', '110')
+        # Create camera actor (only for Town2)
         if custom_map_path == None:
+            self.IM_WIDTH, self.IM_HEIGHT = 640, 480
+            cam_bp = blueprint_library.find('sensor.camera.rgb')
+            cam_bp.set_attribute('image_size_x', f'{self.IM_WIDTH}')
+            cam_bp.set_attribute('image_size_y', f'{self.IM_HEIGHT}')
+            cam_bp.set_attribute('fov', '110')
             spawn_point = carla.Transform(carla.Location(x=-7.390556, y=312.114441, z=10.220332), carla.Rotation(pitch=-20, yaw=-45))
             sensor = self.world.spawn_actor(cam_bp, spawn_point)
             self.image_queue = queue.Queue()
@@ -195,6 +200,78 @@ class CarEnv:
         # Run one step and store state dimension
         initState = self.reset()
         self.state_dim  = len(initState)
+
+    ###########################################################################
+    def reset(self):
+        """
+        Initialize vehicle state
+        """
+        ##########
+        # Vehicle position and heading angle (wrt spanw point)
+        x_loc    = 0
+        y_loc    = 0
+        psi_loc  = 0
+        
+        ##########
+        # Choose spawn point and set camera
+        #spawn_point = self.world.get_map().get_spawn_points()[1]
+        spawn_point = self.generate_random_spawn_point()
+        if self.custom_map_path != None:
+            self.set_camera(self.bl, spawn_point)
+
+        ##########
+        # Set vehicle transform
+        rotation = spawn_point.rotation
+        yaw_st   = spawn_point.rotation.yaw
+        x_wld, y_wld = self.local2world(x_loc, y_loc, yaw_st)
+        location = spawn_point.location + carla.Location(x=x_wld, y=y_wld, z=0)
+        rotation = carla.Rotation( yaw = yaw_st + psi_loc )
+        trans = carla.Transform(location, rotation)
+        self.vehicle.set_transform(trans)
+
+        ##########        
+        # Vehicle vlocity
+        vx = self.initial_speed
+        vy = 0
+        world_vx, world_vy = self.local2world(vx, vy, rotation.yaw)        
+        velocity_world = carla.Vector3D(world_vx, world_vy, 0)
+        self.vehicle.set_target_velocity(velocity_world) # effective after two frames
+
+        ##########        
+        # Vechicle angular velocity
+        yaw_rate = 0
+        angular_velocity = carla.Vector3D(z = yaw_rate)
+        self.vehicle.set_target_angular_velocity(angular_velocity)
+
+        ##########
+        # Get initial state
+        x_vehicle = self.getVehicleState()
+        x_road    = self.getRoadState()            
+        initState = x_vehicle + x_road
+
+        return initState
+                
+    def generate_random_spawn_point(self):
+        
+        if self.custom_map_path != None: # for racing track
+            spawn_point = random_spawn_custom_map(self.all_sp)
+            #print(spawn_point.location)
+
+        else: # for Town2
+            world_map = self.world.get_map()
+            new_spawn_point = world_map.get_spawn_points()[1]
+            start_point = {'location':{'x':-7.530000, 'y':270.729980, 'z':0.500000}, 'rotation':{'pitch':0.000000,'yaw':89.99954,'roll':0.000000}}
+            corner_point = {'location':{'x':-7.390556, 'y':303.114441, 'z':0.520332}, 'rotation':{'pitch':0.000000,'yaw':0.000000,'roll':0.000000}}
+            end_point = {'location':{'x':25.694059, 'y':306.545349, 'z':0.521810},'rotation':{'pitch':0.000000,'yaw':0.000,'roll':0.000000}}
+            spawn_point_trans = random_spawn_point_corner(new_spawn_point,start_point, corner_point, end_point)
+            way_point = world_map.get_waypoint(spawn_point_trans.location, project_to_road=True)
+            x_rd   = way_point.transform.location.x
+            y_rd   = way_point.transform.location.y
+            yaw_rd = way_point.transform.rotation.yaw
+            spawn_point = carla.Transform(carla.Location(x_rd, y_rd,0.50000), 
+                                          carla.Rotation(0, yaw_rd, 0))  
+            
+        return spawn_point
 
     def set_camera(self, blueprint_library, transform):
         if len(self.actor_list) == 1:
@@ -216,81 +293,7 @@ class CarEnv:
             spawn_point = carla.Transform(camera_loc, camera_rot)
             self.actor_list[1].set_transform(spawn_point)
         
-    def generate_random_spawn_point(self):
-        world_map = self.world.get_map()
-        new_spawn_point = world_map.get_spawn_points()[1]
-        start_point = {'location':{'x':-7.530000, 'y':270.729980, 'z':0.500000}, 'rotation':{'pitch':0.000000,'yaw':89.99954,'roll':0.000000}}
-        corner_point = {'location':{'x':-7.390556, 'y':303.114441, 'z':0.520332}, 'rotation':{'pitch':0.000000,'yaw':0.000000,'roll':0.000000}}
-        end_point = {'location':{'x':25.694059, 'y':306.545349, 'z':0.521810},'rotation':{'pitch':0.000000,'yaw':0.000,'roll':0.000000}}
-        if self.custom_map_path != None:
-            spawn_point = random_spawn_custom_map(self.all_sp)
-            self.set_camera(self.bl, spawn_point)
-            #self.vehicle.set_transform(spawn_point)
-            self.start_point = spawn_point
-            #print(spawn_point.location)
-        else:
-            spawn_point_trans = random_spawn_point_corner(new_spawn_point,start_point, corner_point, end_point)
-            way_point = world_map.get_waypoint(spawn_point_trans.location, project_to_road=True)
-            x_rd   = way_point.transform.location.x
-            y_rd   = way_point.transform.location.y
-            yaw_rd = way_point.transform.rotation.yaw
-            spawn_point_trans = carla.Transform(carla.Location(x_rd, y_rd,0.50000), 
-                                          carla.Rotation(0, yaw_rd, 0))  
-            self.start_point = spawn_point_trans 
-            
-        return
-    
-    def process_img(self, image):
-        i = np.array(image.raw_data)
-        i2 = i.reshape((self.IM_HEIGHT, self.IM_WIDTH, 4))
-        i3 = i2[:, :, :3]
-        cv2.imshow("", i3)
-        cv2.waitKey(1)    
-        return i3/255.0
-    
-
-    def reset(self):
-        """
-        Initialize vehicle state
-        """
-        
-        # Initialization of vehicle position and heading angle
-        x_loc    = 0
-        y_loc    = 0.5
-        psi_loc  = 0
-        #start_rd = self.world.get_map().get_spawn_points()[1]
-        self.generate_random_spawn_point()
-        start_rd = self.start_point
-        rotation = self.start_point.rotation
-
-        yaw_st   = start_rd.rotation.yaw
-        x_wld, y_wld = self.local2world(x_loc, y_loc, yaw_st)
-        location = start_rd.location + carla.Location(x=x_wld, y=y_wld, z=0)
-        rotation = carla.Rotation( yaw = yaw_st + psi_loc )
-        trans = carla.Transform(location, rotation)
-        self.vehicle.set_transform(trans)
-        
-        
-                
-        # Initialization of vehicle vlocity
-        vx = self.initial_speed
-        vy = 0
-        world_vx, world_vy = self.local2world(vx, vy, rotation.yaw)        
-        velocity_world = carla.Vector3D(world_vx, world_vy, 0)
-        self.vehicle.set_target_velocity(velocity_world) # effective after two frames
-        
-        # Initialization of vechicle angular velocity
-        yaw_rate = 0
-        angular_velocity = carla.Vector3D(z = yaw_rate)
-        self.vehicle.set_target_angular_velocity(angular_velocity)
-
-        # Get initial state
-        x_vehicle = self.getVehicleState()
-        x_road    = self.getRoadState()            
-        initState = x_vehicle + x_road
-        return initState
-                
-
+    ###########################################################################
     def step(self, actionID=0):
         """
         Apply control and return new state, reward, and isDone flag
@@ -318,21 +321,41 @@ class CarEnv:
         x_road    = self.getRoadState()            
         newState = x_vehicle + x_road
 
+        # process camera image data
+        if self.image_queue:
+            image = self.image_queue.get()
+            self.process_img(image)
+
         # Is done?
         location = self.vehicle.get_location()
-        lat_err  = x_road[0]        
-        if location.x > 20: # Goal
-            isDone = True
-            reward = 1
-            
-        elif np.abs( lat_err ) > 1:  # Unsafe
-            isDone = True
-            reward = 0
-        else:
-            isDone  = False
-            reward  = 0
+        lat_err  = x_road[0]
+        if not self.world.get_map().name == 'Carla/Maps/Town02':
+            if location.x > 20: # Goal
+                isDone = True
+                reward = 1    
+            elif np.abs( lat_err ) > 1:  # Unsafe
+                isDone = True
+                reward = 0
+            else:
+                isDone  = False
+                reward  = 0
+        else: 
+            if np.abs( lat_err ) > 10:  # Unsafe
+                isDone = True
+                reward = 0
+            else:
+                isDone  = False
+                reward  = 0            
 
         return newState, reward, isDone
+    
+    def process_img(self, image):
+        i = np.array(image.raw_data)
+        i2 = i.reshape((self.IM_HEIGHT, self.IM_WIDTH, 4))
+        i3 = i2[:, :, :3]
+        cv2.imshow("camera", i3)
+        cv2.waitKey(1)    
+        return i3/255.0    
 
 
     def getVehicleState(self):
@@ -478,7 +501,11 @@ class CarEnv:
             actor.destroy()
         self.world.tick()
         print('done.')
-              
+        
+        # Destroy camera view
+        if self.image_queue:
+            cv2.destroyAllWindows()
+
 
 ##############################################################################
 # main
