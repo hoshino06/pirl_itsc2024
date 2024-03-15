@@ -138,29 +138,38 @@ class CarEnv:
     def __init__(self, 
                  port=2000, time_step = 0.01, autopilot=False, 
                  custom_map_path = None, 
+                 spawn_method = None, 
+                 camera_view  = None, 
                  initial_speed = 10):
         """
         Connect to Carla server, spawn vehicle, and initialize variables 
         """
+        # Initialization of attributes
+        self.actor_list  = []
+        self.image_queue = None
+        self.autopilot   = autopilot
+        self.spawn_method = spawn_method
+        self.camera_view  = camera_view
+        self.initial_speed = initial_speed
+
         # Client creation and world connection
         print(f'Connecting carla server on port {port}.')
         self.client = carla.Client("localhost", port)
         self.client.set_timeout(10.0)
         self.world = self.client.get_world()
         self.custom_map_path = custom_map_path
-        self.all_sp = None
 
-        # load custom map
-        self.initial_speed = initial_speed
-        if self.custom_map_path != None:
+        # load custom map and get all spawn points
+        if self.custom_map_path: 
             self.world = load_custom_map(self.custom_map_path, self.client)
             self.all_sp = fetch_all_spawn_point(self.world)
             #for sp in self.all_sp:
             #    draw_path(sp.location, self.world, life_time= 600)
         else:
             if not self.world.get_map().name == 'Carla/Maps/Town02':
-                self.world = self.client.load_world('Town02')
-                
+                self.world  = self.client.load_world('Town02')
+                self.all_sp = self.world.get_map().get_all_spawn_points()
+        
         # Set synchronous mode settings
         new_settings = self.world.get_settings()
         new_settings.synchronous_mode = True
@@ -168,24 +177,29 @@ class CarEnv:
         self.time_step = time_step
         self.world.apply_settings(new_settings)
 
-        # Initialization
-        self.actor_list = []
-
         # Create vehicle actor        
         blueprint_library = self.world.get_blueprint_library()
         self.bl = blueprint_library
-        bp = blueprint_library.filter('model3')[0]
-        new_spawn_point = self.world.get_map().get_spawn_points()[1]
-        self.vehicle = self.world.spawn_actor(bp, new_spawn_point)
-
+        vehicle_bp = blueprint_library.filter('model3')[0]
+        if self.spawn_method:         
+            spawn_point = self.spawn_method(self)
+        else:
+            spawn_point = self.all_sp[1]
+        self.vehicle = self.world.spawn_actor(vehicle_bp, spawn_point)
         self.actor_list.append(self.vehicle)
-        if autopilot: 
+        if self.autopilot:
             self.vehicle.set_autopilot(True)  # if you just wanted some NPCs to drive.
             print('Vehicle was spawned with auto pilot mode')
-        self.autopilot = autopilot
+
+        # Change spectator view (carla window)
+        sp_loc   = spawn_point.location
+        sp_rot   = spawn_point.rotation
+        spec_loc = sp_loc + carla.Location(x=0, y=0, z=2)         
+        trans    = carla.Transform(spec_loc, sp_rot)
+        self.world.get_spectator().set_transform(trans)
         
         # Create camera actor (only for Town2)
-        if custom_map_path == None:
+        if self.world.get_map().name == 'Carla/Maps/Town02':
             self.IM_WIDTH, self.IM_HEIGHT = 640, 480
             cam_bp = blueprint_library.find('sensor.camera.rgb')
             cam_bp.set_attribute('image_size_x', f'{self.IM_WIDTH}')
@@ -196,6 +210,10 @@ class CarEnv:
             self.image_queue = queue.Queue()
             sensor.listen(self.image_queue.put)
             self.actor_list.append(sensor)  
+
+        # Set additional camera view
+        if self.camera_view:
+            self.set_camera(self.bl, spawn_point)
 
         # Run one step and store state dimension
         initState = self.reset()
@@ -214,10 +232,18 @@ class CarEnv:
         
         ##########
         # Choose spawn point and set camera
-        #spawn_point = self.world.get_map().get_spawn_points()[1]
-        spawn_point = self.generate_random_spawn_point()
-        if self.custom_map_path != None:
-            self.set_camera(self.bl, spawn_point)
+        if self.spawn_method:
+            spawn_point = self.spawn_method(self)
+        else:            
+            spawn_point = self.generate_random_spawn_point()
+        
+        ##########
+        # Change spectator view (carla window)
+        sp_loc   = spawn_point.location
+        sp_rot   = spawn_point.rotation
+        spec_loc = sp_loc + carla.Location(x=0, y=0, z=5)         
+        trans    = carla.Transform(spec_loc, sp_rot)
+        self.world.get_spectator().set_transform(trans)
 
         ##########
         # Set vehicle transform
@@ -492,7 +518,11 @@ class CarEnv:
         loc_y   = y * np.cos(theta) + x * np.sin(theta)
         return loc_x, loc_y
 
-
+    ###########################################################################
+    # Utils
+    def get_all_spawn_points(self):
+        return self.all_sp
+    
     def destroy(self):
         
         # Destroy actors
@@ -508,18 +538,34 @@ class CarEnv:
 
 
 ##############################################################################
-# main
+# Test code for carl_env
 ##############################################################################
 if __name__ == '__main__': 
    
-    carla_port = 5000
-    time_step  = 0.01
-    
+    carla_port = 3000
+    time_step  = 0.05
+
+    map_for_training = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
+    map_for_testing  = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/test.xodr"
+
+    def choose_spawn_point(carla_env):
+        sp_list = carla_env.get_all_spawn_points()    
+        spawn_point = sp_list[0]
+        return spawn_point
+
+    def random_spawn_point(carla_env):
+        sp_list     = carla_env.get_all_spawn_points()       
+        rand_1      = np.random.randint(0,len(sp_list))
+        spawn_point = sp_list[rand_1]
+        return spawn_point
+
     try:
-        rl_env = CarEnv(port= carla_port, 
-                        time_step=time_step, 
-                        custom_map_path="/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr") #, autopilot=True)
-        #spectate(rl_env.world)
+        rl_env = CarEnv(port=carla_port, 
+                        time_step=time_step,
+                        custom_map_path=map_for_testing, # None: Town2
+                        spawn_method=random_spawn_point, # None: random pick
+                        autopilot=True)
+
         while True:
             rl_env.reset()
             isDone = False

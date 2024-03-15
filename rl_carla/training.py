@@ -45,6 +45,18 @@ class Env(CarEnv):
         return new_state, reward, done        
 
 
+def choose_spawn_point(carla_env):
+    sp_list = carla_env.get_all_spawn_points()    
+    spawn_point = sp_list[0]
+    return spawn_point
+
+def random_spawn_point(carla_env):
+    sp_list     = carla_env.get_all_spawn_points()       
+    rand_1      = np.random.randint(0,len(sp_list))
+    spawn_point = sp_list[rand_1]
+    return spawn_point
+
+
 ################################################################################################
 # Main
 if __name__ == '__main__':
@@ -61,15 +73,16 @@ if __name__ == '__main__':
     ###########################
     # Environment
     carla_port = 3000
-    time_step  = 0.05    
+    time_step  = 0.05
     map_for_training = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
+    map_for_testing  = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/test.xodr"
 
     env    = Env(port=carla_port, time_step=time_step,
-                 custom_map_path = map_for_training
+                 custom_map_path = map_for_training,
+                 spawn_method=random_spawn_point,
                  )
     actNum = env.action_num
     obsNum = len(env.reset())
-
 
     ############################
     # PIRL option    
