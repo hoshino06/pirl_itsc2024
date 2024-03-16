@@ -96,12 +96,11 @@ if __name__ == '__main__':
     
     agentOp = agentOptions(
         DISCOUNT   = 1, 
-        OPTIMIZER  = Adam(learning_rate=0.01),
+        OPTIMIZER  = Adam(learning_rate=1e-4),
         REPLAY_MEMORY_SIZE = 5000, 
         REPLAY_MEMORY_MIN  = 100,
         MINIBATCH_SIZE     = 16,
-        )
-    
+        )    
    
     agent  = RLagent(model, actNum, agentOp)
 
