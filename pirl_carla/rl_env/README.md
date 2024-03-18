@@ -16,6 +16,7 @@
   - 'actor_filter = 'vehicle.audi.tt'':  
   - 'spawn_method = None': Specify the method of spaning vehicle. 
   - 'vehicle_reset = None': 
+  - 'spectator_init  = None': Spector view can be specifed by dictionaly  
   - 'spectator_reset = True': 
   - 'camera_view     = None': 
   - 'initial_speed   = 10': 

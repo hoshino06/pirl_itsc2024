@@ -15,7 +15,7 @@ from keras.optimizers import Adam
 
 # PIRL agent
 from rl_agent.PIRL_DQN import PIRLagent, agentOptions, train, trainOptions, pinnOptions
-from rl_env.carla_env import CarEnv, spawn_for_accidental
+from rl_env.carla_env import CarEnv, spawn_train_map_c_north_east
 
 # carla environment
 class Env(CarEnv):
@@ -159,9 +159,9 @@ if __name__ == '__main__':
 
     ###########################################################################
     # Environment
-    carla_port = 4000
+    carla_port = 3000
     time_step  = 0.05    
-    map_train        = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
+    map_train  = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
 
     # spawn method (initial vehicle location)
     def random_spawn_point(carla_env):
@@ -169,7 +169,6 @@ if __name__ == '__main__':
         rand_1      = np.random.randint(0,len(sp_list))
         spawn_point = sp_list[rand_1]
         return spawn_point
-
 
     # vehicle state initialization
     def vehicle_reset_method(): 
@@ -186,16 +185,19 @@ if __name__ == '__main__':
         # It must return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
         return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
 
+    # Spectator_coordinate
+    spec_init = {'x':-965, 'y':185, 'z':15, 'pitch':-45, 'yaw':120, 'roll':0}
 
     env    = Env(port=carla_port, time_step=time_step,
                  custom_map_path = map_train,
-                 actor_filter = 'vehicle.audi.tt',  
-                 spawn_method=spawn_for_accidental,
-                 vehicle_reset= vehicle_reset_method,                  
+                 actor_filter    = 'vehicle.audi.tt',  
+                 spawn_method    = spawn_train_map_c_north_east,
+                 vehicle_reset   = vehicle_reset_method,                  
+                 spectator_init  = spec_init,
+                 spectator_reset = False, 
                  )
     actNum = env.action_num
     obsNum = len(env.reset())
-
 
     ###########################################################################
     # PIRL option    
