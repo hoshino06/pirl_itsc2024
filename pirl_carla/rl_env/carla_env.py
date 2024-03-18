@@ -506,8 +506,8 @@ class CarEnv:
         # Get nearby waypoint
         world_map = self.world.get_map()
         
-        way_point = world_map.get_waypoint(vehicle_locat, project_to_road=True)
-        if way_point.lane_width < 20:
+        way_point = world_map.get_waypoint(vehicle_locat, project_to_road=True)    
+        if self.custom_map_path and way_point.lane_width < 20:
             right_way_point = way_point.get_right_lane()
             left_way_point = way_point.get_left_lane()
             way_point = right_way_point if right_way_point.lane_width > left_way_point.lane_width else left_way_point
@@ -664,7 +664,7 @@ if __name__ == '__main__':
         y_loc    = 0 #np.random.uniform(-5,5)
         psi_loc  = 0
         # velocity and yaw rate
-        vx = 20
+        vx = 10
         vy = 0
         yaw_rate = 0        
         
@@ -687,11 +687,11 @@ if __name__ == '__main__':
     try:
         rl_env = CarEnv(port=carla_port, 
                         time_step=time_step,
-                        custom_map_path = map_train, # None: Town2
-                        spawn_method    = spawn_train_map_c_north_east, # None: random pick
+                        custom_map_path = None, #map_train, # None: Town2
+                        spawn_method    = None, #spawn_train_map_c_north_east, # None: random pick
                         vehicle_reset   = vehicle_reset_method, 
                         actor_filter    = 'vehicle.audi.tt',  
-                        spectator_init  = spec_init,
+                        spectator_init  = None, #spec_init,
                         spectator_reset = False, 
                         autopilot=True)
 
