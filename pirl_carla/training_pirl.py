@@ -15,7 +15,7 @@ from keras.optimizers import Adam
 
 # PIRL agent
 from rl_agent.PIRL_DQN import PIRLagent, agentOptions, train, trainOptions, pinnOptions
-from rl_env.carla_env import CarEnv
+from rl_env.carla_env import CarEnv, spawn_for_accidental
 
 # carla environment
 class Env(CarEnv):
@@ -159,7 +159,7 @@ if __name__ == '__main__':
 
     ###########################################################################
     # Environment
-    carla_port = 3000
+    carla_port = 4000
     time_step  = 0.05    
     map_train        = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
 
@@ -170,17 +170,18 @@ if __name__ == '__main__':
         spawn_point = sp_list[rand_1]
         return spawn_point
 
+
     # vehicle state initialization
     def vehicle_reset_method(): 
         
         # position and angle
         x_loc    = 0
-        y_loc    = 0 #np.random.uniform(-5,5)
-        psi_loc  = 0
+        y_loc    = 0 #np.random.uniform(-7,7)
+        psi_loc  = np.random.uniform(-60,60)
         # velocity and yaw rate
         vx = 20
-        vy = 0
-        yaw_rate = 0        
+        vy = 0.5* float(vx * np.random.rand(1)) 
+        yaw_rate = np.random.uniform(-360,360)       
         
         # It must return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
         return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
@@ -189,7 +190,7 @@ if __name__ == '__main__':
     env    = Env(port=carla_port, time_step=time_step,
                  custom_map_path = map_train,
                  actor_filter = 'vehicle.audi.tt',  
-                 spawn_method=random_spawn_point,
+                 spawn_method=spawn_for_accidental,
                  vehicle_reset= vehicle_reset_method,                  
                  )
     actNum = env.action_num
@@ -212,6 +213,8 @@ if __name__ == '__main__':
         REPLAY_MEMORY_SIZE = 5000, 
         REPLAY_MEMORY_MIN  = 100,
         MINIBATCH_SIZE     = 32,
+        EPSILON_DECAY       = 0.9998, 
+        EPSILON_MIN         = 0.01,
         )
     
     pinnOp = pinnOptions(
@@ -230,6 +233,9 @@ if __name__ == '__main__':
 
     #LOG_DIR = None
     LOG_DIR = 'logs/test'+datetime.now().strftime('%m%d%H%M')
+    """
+    $ tensorboard --logdir logs/...
+    """
     
     trainOp = trainOptions(
         EPISODES = 10_000, 

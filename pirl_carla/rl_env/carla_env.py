@@ -171,8 +171,8 @@ class CarEnv:
         if self.custom_map_path: 
             self.world = load_custom_map(self.custom_map_path, self.client)
             self.all_sp = fetch_all_spawn_point(self.world)
-            #for sp in self.all_sp:
-            #    draw_path(sp.location, self.world, life_time= 600)
+            for sp in self.all_sp:
+                draw_path(sp.location, self.world, life_time= 600)
         else:
             if not self.world.get_map().name == 'Carla/Maps/Town02':
                 self.world  = self.client.load_world('Town02')
@@ -234,7 +234,10 @@ class CarEnv:
         sp_rot   = spawn_point.rotation
         spec_loc = sp_loc + carla.Location(x=0, y=0, z=5)         
         trans    = carla.Transform(spec_loc, sp_rot)
-        self.world.get_spectator().set_transform(trans)
+        #self.world.get_spectator().set_transform(trans)
+        
+        cam_spawn_point = carla.Transform(carla.Location(x=-965.017395, y=185.138901, z=15.485300), carla.Rotation(pitch=-45, yaw=120))
+        self.world.get_spectator().set_transform(cam_spawn_point)
         
         # Create camera actor (only for Town2)
         if self.world.get_map().name == 'Carla/Maps/Town02':
@@ -275,7 +278,7 @@ class CarEnv:
         sp_rot   = spawn_point.rotation
         spec_loc = sp_loc + carla.Location(x=0, y=0, z=5)         
         trans    = carla.Transform(spec_loc, sp_rot)
-        self.world.get_spectator().set_transform(trans)
+        #self.world.get_spectator().set_transform(trans)
 
         ##########
         # Vehicle position and heading angle (wrt spanw point)
@@ -592,6 +595,34 @@ class CarEnv:
             cv2.destroyAllWindows()
 
 
+###############################################################################
+def spawn_for_accidental(carla_env):
+    current_spawn_point = carla.Transform(carla.Location(x=-980.518616, y=202.946793, z=0.500000))
+    start_point = {'location':{'x':-1005.518188, 'y':203.016663, 'z':0.500000}, 'rotation':{'pitch':0.000000,'yaw':0.000000,'roll':0.000000}}
+    corner_point = {'location':{'x':-967.017395, 'y':203.016663, 'z':0.500000}, 'rotation':{'pitch':0.000000,'yaw':0.000000,'roll':0.000000}}
+    end_point = {'location':{'x':-967.017395, 'y':230.016663, 'z':0.500000},'rotation':{'pitch':0.000000,'yaw':89.99954,'roll':0.000000}}
+    
+    def random_spawn_point_corner_new_map(spawn_point, start, corner, end):
+        dist_1 = abs(corner['location']['x']-start['location']['x'])
+        dist_2 = abs(end['location']['y']-corner['location']['y'])
+        distance = dist_1 + dist_2
+        eps = np.random.rand()
+        rand_dist = eps*distance
+        if rand_dist < dist_1:
+            # 2nd phase, moving in y direction
+            new_spawn_point = carla.Transform(carla.Location(corner['location']['x'], corner['location']['y'], corner['location']['z']), carla.Rotation(end['rotation']['pitch'], end['rotation']['yaw'], end['rotation']['roll']))
+        else:
+            # 1nd phase, moving in x direction
+            new_spawn_point = carla.Transform(carla.Location((start['location']['x']), start['location']['y'], start['location']['z']), spawn_point.rotation)
+        return new_spawn_point
+    
+    spawn_point = random_spawn_point_corner_new_map(current_spawn_point,start_point, corner_point, end_point)        
+    
+    print(spawn_point)
+    return spawn_point
+
+
+
 ##############################################################################
 # Test code for carl_env
 ##############################################################################
@@ -602,16 +633,8 @@ if __name__ == '__main__':
         ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=3000 &
     """        
 
-    carla_port = 3000
+    carla_port = 4000
     time_step  = 0.05
-
-    # maps 
-    map_simple       = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/simple.xodr"
-    map_train        = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
-    map_test         = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/test.xodr"
-    map_test_refined = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/test_refined.xodr"
-    map_zhenhua      = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/zhenhua.xodr"
-    map_town2        = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/Town02.xodr"
 
     # spawn method (initial vehicle location)
     def choose_spawn_point(carla_env):
@@ -623,7 +646,9 @@ if __name__ == '__main__':
         sp_list     = carla_env.get_all_spawn_points()       
         rand_1      = np.random.randint(0,len(sp_list))
         spawn_point = sp_list[rand_1]
+        print(rand_1, spawn_point)
         return spawn_point
+
 
     # vehicle state initialization
     def vehicle_reset_method(): 
@@ -640,13 +665,21 @@ if __name__ == '__main__':
         # It must return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
         return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
 
+    # maps 
+    map_simple       = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/simple.xodr"
+    map_train        = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
+    map_test         = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/test.xodr"
+    map_test_refined = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/test_refined.xodr"
+    map_zhenhua      = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/zhenhua.xodr"
+    map_town2        = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/Town02.xodr"
+
     ##########################################################################
     # simulation
     try:
         rl_env = CarEnv(port=carla_port, 
                         time_step=time_step,
-                        custom_map_path=map_town2, # None: Town2
-                        spawn_method=random_spawn_point, # None: random pick
+                        custom_map_path=map_train, # None: Town2
+                        spawn_method=spawn_for_accidental, # None: random pick
                         actor_filter = 'vehicle.audi.tt',  
                         vehicle_reset= vehicle_reset_method, 
                         autopilot=True)

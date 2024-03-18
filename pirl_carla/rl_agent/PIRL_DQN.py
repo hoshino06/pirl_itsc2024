@@ -25,7 +25,7 @@ def agentOptions(
         MINIBATCH_SIZE     = 16, 
         UPDATE_TARGET_EVERY = 5, 
         EPSILON_INIT        = 1,
-        EPSILON_DECAY       = 0.95, 
+        EPSILON_DECAY       = 0.998, 
         EPSILON_MIN         = 0.01,
         ):
     
