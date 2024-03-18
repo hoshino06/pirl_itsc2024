@@ -129,6 +129,7 @@ def set_spectator(world, transform):
 
 ###############################################################################        
 # CarEnv Class
+###############################################################################
 class CarEnv:
 
     step_T_pool = np.linspace(0.6,1, num=5)    # throttle values
@@ -138,9 +139,10 @@ class CarEnv:
     def __init__(self, 
                  port=2000, time_step = 0.01, autopilot=False, 
                  custom_map_path = None, 
-                 actor_filter = 'vehicle.audi.tt', # or use 'model3' 
-                 spawn_method = None, 
-                 camera_view  = None, 
+                 actor_filter  = 'vehicle.audi.tt', # or use 'model3' 
+                 spawn_method  = None,
+                 vehicle_reset = None,
+                 camera_view   = None, 
                  initial_speed = 10):
         """
         Connect to Carla server, spawn vehicle, and initialize variables 
@@ -148,11 +150,12 @@ class CarEnv:
         # Initialization of attributes
         self.actor_list  = []
         self.image_queue = None # for camera
-        self.autopilot      = autopilot
-        self.actor_filter   = actor_filter
-        self.spawn_method   = spawn_method
-        self.camera_view    = camera_view
-        self.initial_speed  = initial_speed
+        self.autopilot   = autopilot
+        self.actor_filter          = actor_filter
+        self.spawn_method          = spawn_method
+        self.vehicle_reset_method  = vehicle_reset
+        self.camera_view           = camera_view
+        self.initial_speed         = initial_speed
 
         ##############################
         # Load Carla world and map
@@ -173,7 +176,7 @@ class CarEnv:
         else:
             if not self.world.get_map().name == 'Carla/Maps/Town02':
                 self.world  = self.client.load_world('Town02')
-                self.all_sp = self.world.get_map().get_all_spawn_points()
+            self.all_sp = self.world.get_map().get_spawn_points()
         
         # Set synchronous mode settings
         new_settings = self.world.get_settings()
@@ -221,7 +224,7 @@ class CarEnv:
         self.vehicle.apply_physics_control(physics_control)
         print("Modified physics control")
         physics_control = self.vehicle.get_physics_control()
-        #print(physics_control)
+        print(physics_control)
 
         ##############################
         # Camera view 
@@ -261,26 +264,34 @@ class CarEnv:
         Initialize vehicle state
         """
         ##########
-        # Vehicle position and heading angle (wrt spanw point)
-        x_loc    = 0
-        y_loc    = 0
-        psi_loc  = 0
-        
-        ##########
         # Choose spawn point and set camera
         if self.spawn_method:
             spawn_point = self.spawn_method(self)
         else:            
             spawn_point = self.generate_random_spawn_point()
         
-        ##########
         # Change spectator view (carla window)
         sp_loc   = spawn_point.location
         sp_rot   = spawn_point.rotation
         spec_loc = sp_loc + carla.Location(x=0, y=0, z=5)         
         trans    = carla.Transform(spec_loc, sp_rot)
-        #self.world.get_spectator().set_transform(trans)
+        self.world.get_spectator().set_transform(trans)
 
+        ##########
+        # Vehicle position and heading angle (wrt spanw point)
+        if self.vehicle_reset_method is None: 
+            # position and angle
+            x_loc    = 0
+            y_loc    = 0
+            psi_loc  = 0
+            # velocity and yaw rate
+            vx = self.initial_speed
+            vy = 0
+            yaw_rate = 0
+        else:             
+            x_loc, y_loc, psi_loc, vx, vy, yaw_rate = self.vehicle_reset_method()
+        #print(x_loc, y_loc, psi_loc, vx, vy, yaw_rate)
+            
         ##########
         # Set vehicle transform
         rotation = spawn_point.rotation
@@ -290,18 +301,13 @@ class CarEnv:
         rotation = carla.Rotation( yaw = yaw_st + psi_loc )
         trans = carla.Transform(location, rotation)
         self.vehicle.set_transform(trans)
-
-        ##########        
-        # Vehicle vlocity
-        vx = self.initial_speed
-        vy = 0
+     
+        # Set vehicle vlocity
         world_vx, world_vy = self.local2world(vx, vy, rotation.yaw)        
         velocity_world = carla.Vector3D(world_vx, world_vy, 0)
         self.vehicle.set_target_velocity(velocity_world) # effective after two frames
-
-        ##########        
-        # Vechicle angular velocity
-        yaw_rate = 0
+     
+        # Set Vechicle angular velocity
         angular_velocity = carla.Vector3D(z = yaw_rate)
         self.vehicle.set_target_angular_velocity(angular_velocity)
 
@@ -406,7 +412,7 @@ class CarEnv:
                 isDone  = False
                 reward  = 0
         else: 
-            if np.abs( lat_err ) > 10:  # Unsafe
+            if np.abs( lat_err ) > 8:  # Unsafe
                 isDone = True
                 reward = 0
             else:
@@ -590,10 +596,16 @@ class CarEnv:
 # Test code for carl_env
 ##############################################################################
 if __name__ == '__main__': 
-   
+
+    """
+    run carla by: 
+        ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=3000 &
+    """        
+
     carla_port = 3000
     time_step  = 0.05
 
+    # maps 
     map_simple       = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/simple.xodr"
     map_train        = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
     map_test         = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/test.xodr"
@@ -601,6 +613,7 @@ if __name__ == '__main__':
     map_zhenhua      = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/zhenhua.xodr"
     map_town2        = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/Town02.xodr"
 
+    # spawn method (initial vehicle location)
     def choose_spawn_point(carla_env):
         sp_list = carla_env.get_all_spawn_points()    
         spawn_point = sp_list[0]
@@ -612,12 +625,30 @@ if __name__ == '__main__':
         spawn_point = sp_list[rand_1]
         return spawn_point
 
+    # vehicle state initialization
+    def vehicle_reset_method(): 
+        
+        # position and angle
+        x_loc    = 0
+        y_loc    = 0 #np.random.uniform(-5,5)
+        psi_loc  = 0
+        # velocity and yaw rate
+        vx = 20
+        vy = 0
+        yaw_rate = 0        
+        
+        # It must return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
+        return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
+
+    ##########################################################################
+    # simulation
     try:
         rl_env = CarEnv(port=carla_port, 
                         time_step=time_step,
-                        custom_map_path=map_train, # None: Town2
+                        custom_map_path=map_town2, # None: Town2
                         spawn_method=random_spawn_point, # None: random pick
                         actor_filter = 'vehicle.audi.tt',  
+                        vehicle_reset= vehicle_reset_method, 
                         autopilot=True)
 
         while True:
