@@ -15,7 +15,7 @@ from keras.optimizers import Adam
 
 # PIRL agent
 from rl_agent.DQN import RLagent, agentOptions, train, trainOptions
-from rl_env.carla_env import CarEnv
+from rl_env.carla_env_accidental import CarEnv
 
 # carla environment
 class Env(CarEnv):
@@ -39,6 +39,7 @@ class Env(CarEnv):
 
         # rewrite "reward" and "done" based on horizon
         if horizon <= 0:
+            #print("horizon done")
             done   = True
             reward = 1
         
@@ -60,10 +61,13 @@ if __name__ == '__main__':
 
     ###########################
     # Environment
-    carla_port = 3100
-    time_step  = 0.05    
+    carla_port = 3706
+    time_step  = 0.1    
+    map_for_training = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
 
-    env    = Env(port=carla_port, time_step=time_step)
+    env    = Env(port=carla_port, time_step=time_step,
+                 custom_map_path = map_for_training
+                 )
     actNum = env.action_num
     obsNum = len(env.reset())
 
@@ -80,7 +84,7 @@ if __name__ == '__main__':
     
     agentOp = agentOptions(
         DISCOUNT   = 1, 
-        OPTIMIZER  = Adam(learning_rate=0.01),
+        OPTIMIZER  = Adam(learning_rate=0.0005),
         REPLAY_MEMORY_SIZE = 5000, 
         REPLAY_MEMORY_MIN  = 100,
         MINIBATCH_SIZE     = 16,
@@ -94,17 +98,27 @@ if __name__ == '__main__':
     # Training option
 
     #LOG_DIR = None
-    LOG_DIR = 'logs/test'+datetime.now().strftime('%m%d%H%M')
+    #LOG_DIR = 'logs/test'+datetime.now().strftime('%m%d%H%M')
+    LOG_DIR = 'logs/test_25k_run1'
     
     trainOp = trainOptions(
-        EPISODES = 3000, 
+        EPISODES = 25000, 
         SHOW_PROGRESS = True, 
         LOG_DIR     = LOG_DIR,
-        SAVE_AGENTS = False, 
-        SAVE_FREQ   = 10,
+        SAVE_AGENTS = True, 
+        SAVE_FREQ   = 500,
         )
 
     ######################################
     # Train 
-    train(agent, env, trainOp)
+    try:  
+        train(agent, env, trainOp)
+        
+    except KeyboardInterrupt:
+        print('\nCancelled by user - training.py.')
+
+    finally:
+        if 'env' in locals():
+            env.destroy()
+
     
