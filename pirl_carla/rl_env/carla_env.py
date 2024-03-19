@@ -97,7 +97,8 @@ def random_spawn_point_corner(spawn_point, start: "dict", corner: "dict", end: "
     dist_1 = abs(corner['location']['y']-start['location']['y'])
     dist_2 = abs(end['location']['x']-corner['location']['x'])
     distance = dist_1 + dist_2
-    eps = np.random.rand()
+    #eps = np.random.rand()
+    eps = np.max([np.min([np.random.normal(loc = float(dist_1/distance), scale=0.2),1]), 0])
     rand_dist = eps*distance
     if rand_dist > dist_1:
         # 2nd phase, moving in x direction
@@ -239,30 +240,30 @@ class CarEnv:
             spec_loc = sp_loc + carla.Location(x=0, y=0, z=5)         
             trans    = carla.Transform(spec_loc, sp_rot)
             self.world.get_spectator().set_transform(trans)
-        else:
+        else: # For MapC
             x = self.spectator_init['x']
             y = self.spectator_init['y']
             z = self.spectator_init['z']
             pitch = self.spectator_init['pitch']
             yaw   = self.spectator_init['yaw']
             roll  = self.spectator_init['roll']
-            spec_loc  = carla.Location(x=-965.017395, y=185.138901, z=15.485300)
-            spec_rot  = carla.Rotation(pitch=-45, yaw=120)
+            spec_loc  = carla.Location(x=x, y=y, z=z)
+            spec_rot  = carla.Rotation(pitch=pitch, yaw=yaw, roll=roll)
             trans     = carla.Transform(spec_loc, spec_rot)
             self.world.get_spectator().set_transform(trans)
         
         # Create camera actor (only for Town2)
-        if self.world.get_map().name == 'Carla/Maps/Town02':
-            self.IM_WIDTH, self.IM_HEIGHT = 640, 480
-            cam_bp = blueprint_library.find('sensor.camera.rgb')
-            cam_bp.set_attribute('image_size_x', f'{self.IM_WIDTH}')
-            cam_bp.set_attribute('image_size_y', f'{self.IM_HEIGHT}')
-            cam_bp.set_attribute('fov', '110')
-            spawn_point = carla.Transform(carla.Location(x=-7.390556, y=312.114441, z=10.220332), carla.Rotation(pitch=-20, yaw=-45))
-            sensor = self.world.spawn_actor(cam_bp, spawn_point)
-            self.image_queue = queue.Queue()
-            sensor.listen(self.image_queue.put)
-            self.actor_list.append(sensor)  
+        # if self.world.get_map().name == 'Carla/Maps/Town02':
+        #     self.IM_WIDTH, self.IM_HEIGHT = 640, 480
+        #     cam_bp = blueprint_library.find('sensor.camera.rgb')
+        #     cam_bp.set_attribute('image_size_x', f'{self.IM_WIDTH}')
+        #     cam_bp.set_attribute('image_size_y', f'{self.IM_HEIGHT}')
+        #     cam_bp.set_attribute('fov', '110')
+        #     spawn_point = carla.Transform(carla.Location(x=-7.390556, y=312.114441, z=10.220332), carla.Rotation(pitch=-20, yaw=-45))
+        #     sensor = self.world.spawn_actor(cam_bp, spawn_point)
+        #     self.image_queue = queue.Queue()
+        #     sensor.listen(self.image_queue.put)
+        #     self.actor_list.append(sensor)  
 
         # Set additional camera view
         if self.camera_view:
@@ -420,8 +421,11 @@ class CarEnv:
         if self.world.get_map().name == 'Carla/Maps/Town02':
             if location.x > 20: # Goal (only for Town02)
                 isDone = True
-                reward = 1    
+                reward = 1
             elif np.abs( lat_err ) > 1:  # Unsafe
+                isDone = True
+                reward = 0
+            elif x_vehicle[0] < 0.001: # to prevent stack at pole
                 isDone = True
                 reward = 0
             else:

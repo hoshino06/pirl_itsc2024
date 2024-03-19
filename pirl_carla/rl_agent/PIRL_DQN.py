@@ -50,6 +50,7 @@ def pinnOptions(
         SAMPLING_FUN, 
         WEIGHT_PDE      = 1e-3, 
         WEIGHT_BOUNDARY = 1, 
+        HESSIAN_CALC    = True,
         ):
 
     pinnOp = {
@@ -57,7 +58,8 @@ def pinnOptions(
         'DIFFUSION_MODEL' : DIFFUSION_MODEL, 
         'SAMPLING_FUN'    : SAMPLING_FUN,
         'WEIGHT_PDE'      : WEIGHT_PDE,
-        'WEIGHT_BOUNDARY' : WEIGHT_BOUNDARY
+        'WEIGHT_BOUNDARY' : WEIGHT_BOUNDARY,
+        'HESSIAN_CALC'    : HESSIAN_CALC,
         }
 
 
@@ -195,21 +197,29 @@ class PIRLagent:
             # PDE loss (lossP)
             ####################
             start_time_hess = datetime.datetime.now()        
-            
-            with tf.GradientTape(watch_accessed_variables=False) as tape_dx2:
-                tape_dx2.watch( X_PDE )
+
+            if self.pinnOp['HESSIAN_CALC']: 
+                with tf.GradientTape(watch_accessed_variables=False) as tape_dx2:
+                    tape_dx2.watch( X_PDE )
+                    with tf.GradientTape(watch_accessed_variables=False) as tape_dx:
+                        tape_dx.watch( X_PDE )
+                        Qsa    = self.model(X_PDE)
+                        V      = tf.reduce_max(Qsa, axis=1)
+                    dV_dx = tape_dx.gradient( V, X_PDE)
+                    dV_dx = tf.cast(dV_dx, dtype=tf.float32)
+                HessV = tape_dx2.batch_jacobian( dV_dx, X_PDE )
+            else: 
                 with tf.GradientTape(watch_accessed_variables=False) as tape_dx:
                     tape_dx.watch( X_PDE )
                     Qsa    = self.model(X_PDE)
                     V      = tf.reduce_max(Qsa, axis=1)
                 dV_dx = tape_dx.gradient( V, X_PDE)
                 dV_dx = tf.cast(dV_dx, dtype=tf.float32)
-            HessV = tape_dx2.batch_jacobian( dV_dx, X_PDE )
 
             end_time_hess = datetime.datetime.now()
             elapsed_time = end_time_hess - start_time_hess
-            print("calc_Hess:", elapsed_time)
 
+            print("calc_Hess:", elapsed_time)
 
             '''
             # check gradient implementation (for debug)
@@ -229,13 +239,18 @@ class PIRLagent:
             ## Convection term
             conv_term =  tf.reduce_sum( dV_dx * f, axis=1 )
 
-            # Diffusion term            
-            diff_term = (1/2) * tf.linalg.trace( tf.matmul(A, HessV) )
-            diff_term = tf.cast(diff_term, dtype=tf.float32)
-                          
-            # lossP
-            lossP = tf.metrics.mean_squared_error(conv_term + diff_term, 
-                                                  np.zeros_like(conv_term) )
+            if self.pinnOp['HESSIAN_CALC']:
+                # Diffusion term            
+                diff_term = (1/2) * tf.linalg.trace( tf.matmul(A, HessV) )
+                diff_term = tf.cast(diff_term, dtype=tf.float32)
+                              
+                # lossP
+                lossP = tf.metrics.mean_squared_error(conv_term + diff_term, 
+                                                      np.zeros_like(conv_term) )
+            else:
+                # lossP
+                lossP = tf.metrics.mean_squared_error(conv_term, 
+                                                      np.zeros_like(conv_term) )             
             
             ########################
             # Boundary loss (lossB)

@@ -106,7 +106,7 @@ def convection_model(s_and_actIdx):
 
 def diffusion_model(x_and_actIdx):
 
-    diagonals = np.concatenate([ 0.1*np.ones(5), 0*np.ones(10), np.array([0])])
+    diagonals = np.concatenate([ 0.01*np.ones(5), 0*np.ones(10), np.array([0])])
     sig  = np.diag(diagonals)
     diff = np.matmul( sig, sig.T )
  
@@ -116,9 +116,9 @@ def sample_for_pinn():
 
     n_dim = 15 + 1
     T    = 5
-    Emax = 8 
-    x_vehicle_max = np.concatenate( [np.array([25, 30, 180]+[ Emax, 180]), np.ones(10)*10] )
-    x_vehicle_min = np.concatenate( [np.array([15,-30,-180]+[-Emax,-180]),-np.ones(10)*10] )
+    Emax = 0.9 
+    x_vehicle_max = np.concatenate( [np.array([15, 30, 60]+[ Emax,  90]), np.ones(10)*10] )
+    x_vehicle_min = np.concatenate( [np.array([ 5,-30,-60]+[-Emax, -90]),-np.ones(10)*10] )
 
     #######################
     # Interior points    
@@ -137,6 +137,7 @@ def sample_for_pinn():
     nBDsafe = 32
     x_max = np.array( list(x_vehicle_max) + [T] )
     x_min = np.array( list(x_vehicle_min) + [0] )
+    Emax = 1.0 
     X_BD_LAT = x_min + (x_max - x_min)* np.random.rand(nBDsafe, n_dim)
     X_BD_LAT[:,3] = np.random.choice([-Emax, Emax], size=nBDsafe)    
     
@@ -176,25 +177,26 @@ if __name__ == '__main__':
         # position and angle
         x_loc    = 0
         y_loc    = 0 #np.random.uniform(-7,7)
-        psi_loc  = np.random.uniform(-60,60)
+        psi_loc  = 0 #np.random.uniform(-60,60)
         # velocity and yaw rate
-        vx = 20
-        vy = 0.5* float(vx * np.random.rand(1)) 
-        yaw_rate = np.random.uniform(-360,360)       
+        vx = 10
+        vy = 0 #0.5* float(vx * np.random.rand(1)) 
+        yaw_rate = 0 #np.random.uniform(-360,360)       
         
         # It must return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
         return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
 
     # Spectator_coordinate
-    spec_init = {'x':-965, 'y':185, 'z':15, 'pitch':-45, 'yaw':120, 'roll':0}
+    spec_town2 = {'x':-7.39, 'y':312, 'z':10.2, 'pitch':-20, 'yaw':-45, 'roll':0}    
+    spec_mapC_NorthEast = {'x':-965, 'y':185, 'z':15, 'pitch':-45, 'yaw':120, 'roll':0} 
 
     env    = Env(port=carla_port, time_step=time_step,
-                 custom_map_path = map_train,
+                 custom_map_path = None, #map_train,
                  actor_filter    = 'vehicle.audi.tt',  
-                 spawn_method    = spawn_train_map_c_north_east,
+                 spawn_method    = None, #spawn_train_map_c_north_east,
                  vehicle_reset   = vehicle_reset_method,                  
-                 spectator_init  = spec_init,
-                 spectator_reset = False, 
+                 spectator_init  = spec_town2, #None, #None
+                 spectator_reset = False, #True 
                  )
     actNum = env.action_num
     obsNum = len(env.reset())
@@ -213,7 +215,7 @@ if __name__ == '__main__':
         DISCOUNT   = 1, 
         OPTIMIZER  = Adam(learning_rate=1e-4),
         REPLAY_MEMORY_SIZE = 5000, 
-        REPLAY_MEMORY_MIN  = 100,
+        REPLAY_MEMORY_MIN  = 1000,
         MINIBATCH_SIZE     = 32,
         EPSILON_DECAY       = 0.9998, 
         EPSILON_MIN         = 0.01,
@@ -225,6 +227,7 @@ if __name__ == '__main__':
         SAMPLING_FUN     = sample_for_pinn,
         WEIGHT_PDE       = 1e-5, 
         WEIGHT_BOUNDARY  = 1, 
+        HESSIAN_CALC     = False,
         )
     
     agent  = PIRLagent(model, actNum, agentOp, pinnOp)
@@ -234,19 +237,27 @@ if __name__ == '__main__':
     # Training option
 
     #LOG_DIR = None
-    LOG_DIR = 'logs/test'+datetime.now().strftime('%m%d%H%M')
+    LOG_DIR = 'logs/Town2/'+datetime.now().strftime('%m%d%H%M')
     """
     $ tensorboard --logdir logs/...
     """
     
     trainOp = trainOptions(
-        EPISODES = 10_000, 
+        EPISODES = 20_000, 
         SHOW_PROGRESS = True, 
         LOG_DIR     = LOG_DIR,
-        SAVE_AGENTS = False, 
+        SAVE_AGENTS = True, 
         SAVE_FREQ   = 1000,
         )
 
     ######################################
     # Train 
-    train(agent, env, trainOp)
+    try:  
+        train(agent, env, trainOp)
+        
+    except KeyboardInterrupt:
+        print('\nCancelled by user - training.py.')
+
+    finally:
+        if 'env' in locals():
+            env.destroy()
