@@ -217,6 +217,7 @@ if __name__ == '__main__':
         REPLAY_MEMORY_SIZE = 5000, 
         REPLAY_MEMORY_MIN  = 1000,
         MINIBATCH_SIZE     = 32,
+        EPSILON_INIT        = 0.9998**20_000, # 1, 
         EPSILON_DECAY       = 0.9998, 
         EPSILON_MIN         = 0.01,
         )
@@ -231,7 +232,7 @@ if __name__ == '__main__':
         )
     
     agent  = PIRLagent(model, actNum, agentOp, pinnOp)
-
+    agent.load_weights('logs/Town2/03192036', ckpt_idx='latest')
 
     ######################################
     # Training option

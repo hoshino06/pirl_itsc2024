@@ -305,6 +305,24 @@ class PIRLagent:
                 self.epsilon *= self.agentOp['EPSILON_DECAY']
                 self.epsilon = max( self.agentOp['EPSILON_MIN'], self.epsilon)
 
+    def load_weights(self, ckpt_dir, ckpt_idx=None):
+
+        checkpoint = tf.train.Checkpoint(model = self.model)
+        manager    = tf.train.CheckpointManager(checkpoint, 
+                                                directory=ckpt_dir, 
+                                                max_to_keep=1000)
+        if not ckpt_idx or ckpt_idx == 'latest': 
+            ckpt_path = manager.latest_checkpoint
+        else:
+            ckpt_path = manager.checkpoints[ckpt_idx]
+   
+        checkpoint.restore(ckpt_path)
+        
+        print(f'Agent loaded weights stored in {ckpt_path}')
+        
+        return ckpt_path    
+
+
 
 ###################################################################################
 # Learning Algorithm
