@@ -9,6 +9,7 @@ import numpy as np
 import random
 from collections import deque # double-ended que
 from tqdm import tqdm  # progress bar
+import datetime
 
 # keras
 import tensorflow as tf
@@ -24,13 +25,13 @@ def agentOptions(
         MINIBATCH_SIZE     = 16, 
         UPDATE_TARGET_EVERY = 5, 
         EPSILON_INIT        = 1,
-        EPSILON_DECAY       = 0.95, 
+        EPSILON_DECAY       = 0.998, 
         EPSILON_MIN         = 0.01,
         ):
     
     agentOp = {
         'DISCOUNT'          : DISCOUNT,
-        'OPTIMIZER'         : OPTIMIZER,  
+        'OPTIMIZER'         : OPTIMIZER,
         'REPLAY_MEMORY_SIZE': REPLAY_MEMORY_SIZE,
         'REPLAY_MEMORY_MIN' : REPLAY_MEMORY_MIN,
         'MINIBATCH_SIZE'    : MINIBATCH_SIZE, 
@@ -42,19 +43,41 @@ def agentOptions(
     
     return agentOp
 
+# PINN Options
+def pinnOptions(
+        CONVECTION_MODEL,
+        DIFFUSION_MODEL,
+        SAMPLING_FUN, 
+        WEIGHT_PDE      = 1e-3, 
+        WEIGHT_BOUNDARY = 1, 
+        HESSIAN_CALC    = True,
+        ):
+
+    pinnOp = {
+        'CONVECTION_MODEL': CONVECTION_MODEL,
+        'DIFFUSION_MODEL' : DIFFUSION_MODEL, 
+        'SAMPLING_FUN'    : SAMPLING_FUN,
+        'WEIGHT_PDE'      : WEIGHT_PDE,
+        'WEIGHT_BOUNDARY' : WEIGHT_BOUNDARY,
+        'HESSIAN_CALC'    : HESSIAN_CALC,
+        }
+
+
+    return pinnOp
+
 
 # Deep Q-Network Agent class
-class RLagent:
-    def __init__(self, model, actNum, agentOp): 
+class PIRLagent:
+    def __init__(self, model, actNum, agentOp, pinnOp): 
 
         # Agent Options
-        self.actNum = actNum
+        self.actNum  = actNum
         self.agentOp = agentOp
+        self.pinnOp  = pinnOp
         
         # Q-networks
-        self.model = model
-        self.model.compile(loss = "mean_squared_error", 
-                           optimizer= agentOp['OPTIMIZER'])
+        self.model     = model
+        self.optimizer = agentOp['OPTIMIZER'] 
 
         # Target Q-network 
         self.target_model = clone_model(self.model) #close with freshly initialized weights
@@ -99,12 +122,15 @@ class RLagent:
         if len(self.replay_memory) < self.agentOp['REPLAY_MEMORY_MIN']:
             return
 
+        print('--------------')
+        start_time = datetime.datetime.now()        
+
         ########################
         # Sample minibatch from experience memory
         minibatch = random.sample(self.replay_memory, self.agentOp['MINIBATCH_SIZE'])
 
         #######################
-        # Calculate traget y        
+        # Calculate traget y
         current_states = np.array([transition[0] for transition in minibatch])        
         current_qs_list = self.model(current_states)
 
@@ -112,7 +138,7 @@ class RLagent:
         future_qs_list = self.target_model(new_current_states)
         
         X = [] # feature set
-        y = [] # label   set
+        y = [] # label   set (target y)
 
         for index, (current_state, action, reward, new_state, is_terminal) in enumerate(minibatch):
             if not is_terminal:
@@ -121,17 +147,148 @@ class RLagent:
             else:
                 new_q = reward
 
-            current_qs = np.array(current_qs_list[index])
-            current_qs[action] = new_q
+            current_qs = np.array(current_qs_list[index])  
+            current_qs[action] = new_q           # update for target
 
             X.append(current_state)
             y.append(current_qs)
 
-        #############################
-        # Update of weights
-        self.model.fit(np.array(X), np.array(y), 
-                       batch_size=self.agentOp['MINIBATCH_SIZE'], 
-                       verbose=0, shuffle=False)
+        X = np.array(X)
+        y = np.array(y)
+
+        end_time = datetime.datetime.now()
+        elapsed_time = end_time - start_time
+        print("sample_DQN:", elapsed_time)
+        start_time = datetime.datetime.now()        
+
+        ##########################
+        # Samples for PDE
+        X_PDE, X_BDini, X_BDsafe = self.pinnOp['SAMPLING_FUN']()
+        X_PDE = tf.Variable(X_PDE)        
+
+        # Convection and diffusion coefficient
+        X_PDE = tf.Variable(X_PDE)
+        Qsa = self.model(X_PDE)
+        Uidx_PDE   = np.argmax(Qsa, axis=1).reshape(-1, 1)
+        f          = np.apply_along_axis(self.pinnOp['CONVECTION_MODEL'], 1, 
+                                         np.concatenate([X_PDE, Uidx_PDE], axis=1) )
+        A =  np.apply_along_axis(self.pinnOp['DIFFUSION_MODEL'], 1, np.concatenate([X_PDE, Uidx_PDE], axis=1))
+
+
+        end_time = datetime.datetime.now()
+        elapsed_time = end_time - start_time
+        print("sample_PDE:", elapsed_time)
+        start_time = datetime.datetime.now()        
+
+        #########################
+        # Calculate loss function
+        with tf.GradientTape(watch_accessed_variables=False) as tape_for_loss:
+  
+            # Watch gradient wrt NN weights
+            tape_for_loss.watch(self.model.trainable_variables)
+
+            ####################
+            # DQN Loss (lossD)
+            ####################
+            y_pred = self.model(X)         
+            lossD = tf.metrics.mean_squared_error( y, y_pred )
+        
+            ####################
+            # PDE loss (lossP)
+            ####################
+            start_time_hess = datetime.datetime.now()        
+
+            if self.pinnOp['HESSIAN_CALC']: 
+                with tf.GradientTape(watch_accessed_variables=False) as tape_dx2:
+                    tape_dx2.watch( X_PDE )
+                    with tf.GradientTape(watch_accessed_variables=False) as tape_dx:
+                        tape_dx.watch( X_PDE )
+                        Qsa    = self.model(X_PDE)
+                        V      = tf.reduce_max(Qsa, axis=1)
+                    dV_dx = tape_dx.gradient( V, X_PDE)
+                    dV_dx = tf.cast(dV_dx, dtype=tf.float32)
+                HessV = tape_dx2.batch_jacobian( dV_dx, X_PDE )
+            else: 
+                with tf.GradientTape(watch_accessed_variables=False) as tape_dx:
+                    tape_dx.watch( X_PDE )
+                    Qsa    = self.model(X_PDE)
+                    V      = tf.reduce_max(Qsa, axis=1)
+                dV_dx = tape_dx.gradient( V, X_PDE)
+                dV_dx = tf.cast(dV_dx, dtype=tf.float32)
+
+            end_time_hess = datetime.datetime.now()
+            elapsed_time = end_time_hess - start_time_hess
+
+            print("calc_Hess:", elapsed_time)
+
+            '''
+            # check gradient implementation (for debug)
+            print('\n V=', V)
+            ##
+            V_dx = tf.reduce_max( self.model( X_PDE + [0.01, 0, 0]), axis=1)
+            dV_dx_man = ( V_dx - V ) / 0.01
+            print('dV_dx[:,0]=',  dV_dx[:,0])
+            print('dV_dx[:,0] ~ ', dV_dx_man)
+            ##
+            V_dx2 = tf.reduce_max( self.model( X_PDE - [0.01, 0, 0]), axis=1)
+            HessV0_man = ( V_dx - 2.0*V + V_dx2 ) / ( (0.01)**2 )
+            print(Hess[:,0])
+            print(HessV0_man)
+            '''                  
+
+            ## Convection term
+            conv_term =  tf.reduce_sum( dV_dx * f, axis=1 )
+
+            if self.pinnOp['HESSIAN_CALC']:
+                # Diffusion term            
+                diff_term = (1/2) * tf.linalg.trace( tf.matmul(A, HessV) )
+                diff_term = tf.cast(diff_term, dtype=tf.float32)
+                              
+                # lossP
+                lossP = tf.metrics.mean_squared_error(conv_term + diff_term, 
+                                                      np.zeros_like(conv_term) )
+            else:
+                # lossP
+                lossP = tf.metrics.mean_squared_error(conv_term, 
+                                                      np.zeros_like(conv_term) )             
+            
+            ########################
+            # Boundary loss (lossB)
+            ########################
+            # termanal boundary (\tau = 0)
+            y_bd_ini = tf.reduce_max(self.model(X_BDini), axis=1)
+            lossBini = tf.metrics.mean_squared_error( y_bd_ini, np.ones_like(y_bd_ini) )
+            
+            # lateral boundary
+            y_bd_safe = tf.reduce_max(self.model(X_BDsafe), axis=1)
+            lossBsafe = tf.metrics.mean_squared_error( y_bd_safe, np.zeros_like(y_bd_safe) )
+            
+            lossB = lossBini + lossBsafe
+
+            #####################
+            # Total Loss function
+            #####################
+            Lambda = self.pinnOp['WEIGHT_PDE']
+            Mu     = self.pinnOp['WEIGHT_BOUNDARY']
+            loss = lossD + Lambda*lossP + Mu*lossB      
+
+        end_time = datetime.datetime.now()
+        elapsed_time = end_time - start_time
+        print("loss:", elapsed_time)
+        start_time = datetime.datetime.now()
+
+        ############################
+        # Update trainable variables
+        ############################
+        gradients = tape_for_loss.gradient(loss, self.model.trainable_variables)
+        #print(gradients[0])
+
+        self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
+
+        end_time = datetime.datetime.now()
+        elapsed_time = end_time - start_time
+        print("grad:", elapsed_time)
+        
 
         if is_episode_done:
             #############################
@@ -147,7 +304,6 @@ class RLagent:
             if self.epsilon > self.agentOp['EPSILON_MIN']:
                 self.epsilon *= self.agentOp['EPSILON_DECAY']
                 self.epsilon = max( self.agentOp['EPSILON_MIN'], self.epsilon)
-
 
     def load_weights(self, ckpt_dir, ckpt_idx=None):
 
@@ -167,6 +323,7 @@ class RLagent:
         return ckpt_path    
 
 
+
 ###################################################################################
 # Learning Algorithm
 
@@ -174,8 +331,8 @@ def trainOptions(
         EPISODES      = 50, 
         LOG_DIR       = None,
         SHOW_PROGRESS = True,
-        SAVE_AGENTS   = False,
-        SAVE_FREQ     = 1000,
+        SAVE_AGENTS   = True,
+        SAVE_FREQ     = 1,
         ):
     
     trainOp = {
@@ -230,12 +387,11 @@ def train(agent, env, trainOp):
 
         # Check point (for recording weights)
         ckpt    = tf.train.Checkpoint(model=agent.model)
-        manager = tf.train.CheckpointManager(ckpt, trainOp['LOG_DIR'], 
-                                             trainOp['EPISODES'],
+        manager = tf.train.CheckpointManager(ckpt, trainOp['LOG_DIR'], trainOp['EPISODES'],
                                              checkpoint_name='weights')
 
     # Iterate episodes
-    if trainOp['SHOW_PROGRESS']:
+    if trainOp['SHOW_PROGRESS']:     
         iterator = tqdm(range(1, trainOp['EPISODES'] + 1), ascii=True, unit='episodes')
     else:
         iterator = range(1, trainOp['EPISODES'] + 1)
@@ -244,11 +400,11 @@ def train(agent, env, trainOp):
 
         ep_reward, ep_q0 = each_episode(agent, env, trainOp)
 
-        if trainOp['LOG_DIR']:        
+        if trainOp['LOG_DIR']: 
             with summary_writer.as_default():
                 tf.summary.scalar('Episode Reward', ep_reward, step=episode)                    
                 tf.summary.scalar('Episode Q0',     ep_q0,     step=episode)                    
             if trainOp['SAVE_AGENTS'] and episode % trainOp['SAVE_FREQ'] == 0:
                 manager.save(checkpoint_number=episode) 
 
-    return
+    return 

@@ -14,7 +14,7 @@ from keras.layers import Dense, Activation
 from keras.optimizers import Adam
 
 # PIRL agent
-from pirl_agent.DQN import PIRLagent, agentOptions, train, trainOptions, pinnOptions
+from rl_agent.DQN import RLagent, agentOptions, train, trainOptions
 from rl_env.carla_env import CarEnv
 
 # carla environment
@@ -44,53 +44,17 @@ class Env(CarEnv):
         
         return new_state, reward, done        
 
-# Physics information
-def convection_model(s_and_actIdx):
 
-    s      = s_and_actIdx[:-1]
-    actIdx = int(s_and_actIdx[-1]) 
+def choose_spawn_point(carla_env):
+    sp_list = carla_env.get_all_spawn_points()    
+    spawn_point = sp_list[0]
+    return spawn_point
 
-    dxdt = np.zeros(15) 
-    dsdt = np.concatenate([dxdt, np.array([-1])])
-    
-    return dsdt
-
-def diffusion_model(x_and_actIdx):
-
-    diagonals =  np.concatenate([0.2*np.ones(15), np.array([0])])
-    sig  = np.diag(diagonals)
-    diff = np.matmul( sig, sig.T )
- 
-    return diff
-
-def sample_for_pinn():
-
-    n_dim = 15 + 1
-    T = 5
-    x_vehicle_max = np.ones(15)
-    x_vehicle_min = -np.ones(15)
-
-    #######################
-    # Interior points    
-    nPDE  = 8
-    x_max = np.array( list(x_vehicle_max) + [T] )
-    x_min = np.array( list(x_vehicle_min) + [0] )
-    X_PDE = x_min + (x_max - x_min)* np.random.rand(nPDE, n_dim)
-
-    # Terminal boundary (at T=0 and safe)
-    nBDini  = 8
-    x_max = np.array( list(x_vehicle_max) + [0] )
-    x_min = np.array( list(x_vehicle_min) + [0] )
-    X_BD_TERM = x_min + (x_max - x_min) * np.random.rand(nBDini, n_dim)
-
-    # Lateral boundary (unsafe set)        
-    nBDsafe = 8
-    x_max = np.array( list(x_vehicle_max) + [T] )
-    x_min = np.array( list(x_vehicle_min) + [0] )
-    X_BD_LAT = x_min + (x_max - x_min)* np.random.rand(nBDsafe, n_dim)
-    X_BD_LAT[:,3] = np.random.choice([-2, 2], size=nBDsafe)    
-    
-    return X_PDE, X_BD_TERM, X_BD_LAT
+def random_spawn_point(carla_env):
+    sp_list     = carla_env.get_all_spawn_points()       
+    rand_1      = np.random.randint(0,len(sp_list))
+    spawn_point = sp_list[rand_1]
+    return spawn_point
 
 
 ################################################################################################
@@ -109,12 +73,16 @@ if __name__ == '__main__':
     ###########################
     # Environment
     carla_port = 3000
-    time_step  = 0.05    
+    time_step  = 0.05
+    map_for_training = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
+    map_for_testing  = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/test.xodr"
 
-    env    = Env(port=carla_port, time_step=time_step)
+    env    = Env(port=carla_port, time_step=time_step,
+                 custom_map_path = map_for_training,
+                 spawn_method=random_spawn_point,
+                 )
     actNum = env.action_num
     obsNum = len(env.reset())
-
 
     ############################
     # PIRL option    
@@ -128,21 +96,13 @@ if __name__ == '__main__':
     
     agentOp = agentOptions(
         DISCOUNT   = 1, 
-        OPTIMIZER  = Adam(learning_rate=0.01),
+        OPTIMIZER  = Adam(learning_rate=1e-4),
         REPLAY_MEMORY_SIZE = 5000, 
         REPLAY_MEMORY_MIN  = 100,
         MINIBATCH_SIZE     = 16,
-        )
-    
-    pinnOp = pinnOptions(
-        CONVECTION_MODEL = convection_model,
-        DIFFUSION_MODEL  = diffusion_model,   
-        SAMPLING_FUN     = sample_for_pinn,
-        WEIGHT_PDE       = 0, 
-        WEIGHT_BOUNDARY  = 1, 
-        )
-    
-    agent  = PIRLagent(model, actNum, agentOp, pinnOp)
+        )    
+   
+    agent  = RLagent(model, actNum, agentOp)
 
 
     ######################################
@@ -155,12 +115,20 @@ if __name__ == '__main__':
         EPISODES = 3000, 
         SHOW_PROGRESS = True, 
         LOG_DIR     = LOG_DIR,
-        SAVE_AGENTS = False, 
+        SAVE_AGENTS = True, 
         SAVE_FREQ   = 10,
         )
 
     ######################################
     # Train 
-    train(agent, env, trainOp)
+    try:  
+        train(agent, env, trainOp)
+        
+    except KeyboardInterrupt:
+        print('\nCancelled by user - training.py.')
+
+    finally:
+        if 'env' in locals():
+            env.destroy()
 
     
