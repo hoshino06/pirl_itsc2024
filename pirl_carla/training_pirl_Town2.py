@@ -160,9 +160,10 @@ if __name__ == '__main__':
 
     ###########################################################################
     # Environment
-    carla_port = 3000
+    carla_port = 5000
     time_step  = 0.05    
     map_train  = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
+    restart = True
 
     # spawn method (initial vehicle location)
     def random_spawn_point(carla_env):
@@ -226,30 +227,41 @@ if __name__ == '__main__':
         CONVECTION_MODEL = convection_model,
         DIFFUSION_MODEL  = diffusion_model,   
         SAMPLING_FUN     = sample_for_pinn,
-        WEIGHT_PDE       = 1e-5, 
+        WEIGHT_PDE       = 1e-4, 
         WEIGHT_BOUNDARY  = 1, 
         HESSIAN_CALC     = False,
         )
     
     agent  = PIRLagent(model, actNum, agentOp, pinnOp)
-    agent.load_weights('logs/Town2/03192036', ckpt_idx='latest')
+    #agent.load_weights('logs/Town2/03192036', ckpt_idx='latest')
 
     ######################################
     # Training option
 
     #LOG_DIR = None
-    LOG_DIR = 'logs/Town2/'+datetime.now().strftime('%m%d%H%M')
+    
+    if restart == True:
+        LOG_DIR = "logs/Town2/03201826/"
+        ckp_path = agent.load_weights(LOG_DIR, ckpt_idx='latest')
+        current_ep = int(ckp_path.split('-')[-1].split('.')[0])
+        print(current_ep)
+    else:
+        LOG_DIR = 'logs/Town2/'+datetime.now().strftime('%m%d%H%M')
+        current_ep = None
+        
     """
     $ tensorboard --logdir logs/...
     """
     
     trainOp = trainOptions(
-        EPISODES = 20_000, 
+        EPISODES = 30_000, 
         SHOW_PROGRESS = True, 
         LOG_DIR     = LOG_DIR,
         SAVE_AGENTS = True, 
         SAVE_FREQ   = 1000,
+        RESTART_EP= current_ep
         )
+    agentOp['RESTART_EP'] = current_ep
 
     ######################################
     # Train 
