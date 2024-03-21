@@ -27,6 +27,7 @@ def agentOptions(
         EPSILON_INIT        = 1,
         EPSILON_DECAY       = 0.998, 
         EPSILON_MIN         = 0.01,
+        RESTART_EP          = None
         ):
     
     agentOp = {
@@ -39,6 +40,7 @@ def agentOptions(
         'EPSILON_INIT'      : EPSILON_INIT,
         'EPSILON_DECAY'     : EPSILON_DECAY, 
         'EPSILON_MIN'       : EPSILON_MIN,
+        'RESTART_EP'        : RESTART_EP
         }
     
     return agentOp
@@ -87,7 +89,7 @@ class PIRLagent:
         self.replay_memory = deque(maxlen=agentOp['REPLAY_MEMORY_SIZE'])
 
         # Initialization of variables
-        self.epsilon = agentOp['EPSILON_INIT']
+        self.epsilon = agentOp['EPSILON_INIT'] if agentOp['RESTART_EP'] == None else max( self.agentOp['EPSILON_MIN'], agentOp['EPSILON_INIT']*np.power(agentOp['EPSILON_DECAY'], agentOp['RESTART_EP']))
         self.target_update_counter = 0
                 
         self.terminate = False
@@ -158,7 +160,7 @@ class PIRLagent:
 
         end_time = datetime.datetime.now()
         elapsed_time = end_time - start_time
-        print("sample_DQN:", elapsed_time)
+        #print("sample_DQN:", elapsed_time)
         start_time = datetime.datetime.now()        
 
         ##########################
@@ -177,7 +179,7 @@ class PIRLagent:
 
         end_time = datetime.datetime.now()
         elapsed_time = end_time - start_time
-        print("sample_PDE:", elapsed_time)
+        #print("sample_PDE:", elapsed_time)
         start_time = datetime.datetime.now()        
 
         #########################
@@ -219,7 +221,7 @@ class PIRLagent:
             end_time_hess = datetime.datetime.now()
             elapsed_time = end_time_hess - start_time_hess
 
-            print("calc_Hess:", elapsed_time)
+            #print("calc_Hess:", elapsed_time)
 
             '''
             # check gradient implementation (for debug)
@@ -274,7 +276,7 @@ class PIRLagent:
 
         end_time = datetime.datetime.now()
         elapsed_time = end_time - start_time
-        print("loss:", elapsed_time)
+        #print("loss:", elapsed_time)
         start_time = datetime.datetime.now()
 
         ############################
@@ -287,7 +289,7 @@ class PIRLagent:
 
         end_time = datetime.datetime.now()
         elapsed_time = end_time - start_time
-        print("grad:", elapsed_time)
+        #print("grad:", elapsed_time)
         
 
         if is_episode_done:
@@ -333,6 +335,7 @@ def trainOptions(
         SHOW_PROGRESS = True,
         SAVE_AGENTS   = True,
         SAVE_FREQ     = 1,
+        RESTART_EP    = None
         ):
     
     trainOp = {
@@ -341,6 +344,7 @@ def trainOptions(
         'SHOW_PROGRESS': SHOW_PROGRESS,
         'SAVE_AGENTS'  : SAVE_AGENTS,
         'SAVE_FREQ'    : SAVE_FREQ,
+        'RESTART_EP'   : RESTART_EP
         }
         
     return trainOp
@@ -390,11 +394,12 @@ def train(agent, env, trainOp):
         manager = tf.train.CheckpointManager(ckpt, trainOp['LOG_DIR'], trainOp['EPISODES'],
                                              checkpoint_name='weights')
 
+    start = 1 if trainOp['RESTART_EP'] == None else trainOp['RESTART_EP']
     # Iterate episodes
     if trainOp['SHOW_PROGRESS']:     
-        iterator = tqdm(range(1, trainOp['EPISODES'] + 1), ascii=True, unit='episodes')
+        iterator = tqdm(range(start+1, trainOp['EPISODES'] + 1), ascii=True, unit='episodes')
     else:
-        iterator = range(1, trainOp['EPISODES'] + 1)
+        iterator = range(start+1, trainOp['EPISODES'] + 1)
 
     for episode in iterator:
 
