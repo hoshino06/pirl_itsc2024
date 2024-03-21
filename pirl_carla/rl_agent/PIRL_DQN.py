@@ -124,8 +124,8 @@ class PIRLagent:
         if len(self.replay_memory) < self.agentOp['REPLAY_MEMORY_MIN']:
             return
 
-        print('--------------')
-        start_time = datetime.datetime.now()        
+        #print('--------------')
+        #start_time = datetime.datetime.now()        
 
         ########################
         # Sample minibatch from experience memory
@@ -158,10 +158,10 @@ class PIRLagent:
         X = np.array(X)
         y = np.array(y)
 
-        end_time = datetime.datetime.now()
-        elapsed_time = end_time - start_time
+        #end_time = datetime.datetime.now()
+        #elapsed_time = end_time - start_time
         #print("sample_DQN:", elapsed_time)
-        start_time = datetime.datetime.now()        
+        #start_time = datetime.datetime.now()        
 
         ##########################
         # Samples for PDE
@@ -177,10 +177,10 @@ class PIRLagent:
         A =  np.apply_along_axis(self.pinnOp['DIFFUSION_MODEL'], 1, np.concatenate([X_PDE, Uidx_PDE], axis=1))
 
 
-        end_time = datetime.datetime.now()
-        elapsed_time = end_time - start_time
+        #end_time = datetime.datetime.now()
+        #elapsed_time = end_time - start_time
         #print("sample_PDE:", elapsed_time)
-        start_time = datetime.datetime.now()        
+        #start_time = datetime.datetime.now()        
 
         #########################
         # Calculate loss function
@@ -198,7 +198,7 @@ class PIRLagent:
             ####################
             # PDE loss (lossP)
             ####################
-            start_time_hess = datetime.datetime.now()        
+            #start_time_hess = datetime.datetime.now()        
 
             if self.pinnOp['HESSIAN_CALC']: 
                 with tf.GradientTape(watch_accessed_variables=False) as tape_dx2:
@@ -218,8 +218,8 @@ class PIRLagent:
                 dV_dx = tape_dx.gradient( V, X_PDE)
                 dV_dx = tf.cast(dV_dx, dtype=tf.float32)
 
-            end_time_hess = datetime.datetime.now()
-            elapsed_time = end_time_hess - start_time_hess
+            #end_time_hess = datetime.datetime.now()
+            #elapsed_time = end_time_hess - start_time_hess
 
             #print("calc_Hess:", elapsed_time)
 
@@ -274,10 +274,10 @@ class PIRLagent:
             Mu     = self.pinnOp['WEIGHT_BOUNDARY']
             loss = lossD + Lambda*lossP + Mu*lossB      
 
-        end_time = datetime.datetime.now()
-        elapsed_time = end_time - start_time
+        #end_time = datetime.datetime.now()
+        #elapsed_time = end_time - start_time
         #print("loss:", elapsed_time)
-        start_time = datetime.datetime.now()
+        #start_time = datetime.datetime.now()
 
         ############################
         # Update trainable variables
@@ -287,8 +287,8 @@ class PIRLagent:
 
         self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
 
-        end_time = datetime.datetime.now()
-        elapsed_time = end_time - start_time
+        #end_time = datetime.datetime.now()
+        #elapsed_time = end_time - start_time
         #print("grad:", elapsed_time)
         
 
