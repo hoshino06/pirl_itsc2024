@@ -54,48 +54,9 @@ def load_agent(env):
         )    
     
     agent  = PIRLagent(model, actNum, agentOp, pinnOp)
-    agent.load_weights('../logs/Town2/03192036', ckpt_idx='latest')
+    agent.load_weights('../logs/Town2/03201529', ckpt_idx='latest')
     
     return agent
-
-
-##############################################################################
-def get_nominal_trajectory(carla_port, time_step, T, spec_town2):
-
-    def choose_spawn_point(carla_env):
-        sp_list = carla_env.get_all_spawn_points()    
-        spawn_point = sp_list[1]
-        return spawn_point
-    
-    # carla_env
-    rl_env = Env(port=carla_port, time_step=time_step, 
-                    custom_map_path = None,
-                    spawn_method    = choose_spawn_point,
-                    spectator_init  = spec_town2, 
-                    spectator_reset = False, 
-                    autopilot       = True)
-        
-    # initialization
-    current_state = rl_env.reset()    
-    state_trajectory   = np.zeros([len(current_state), int(T/rl_env.time_step)])
-    vehicle_trajectory = np.zeros([3, int(T/rl_env.time_step)]) # (x,y,yaw)
-
-    # iteration
-    for i in range(int(T/rl_env.time_step)):
- 
-        # step
-        new_state, reward, is_done = rl_env.step()
-        
-        # state
-        state_trajectory[:,i] = new_state
-        print(new_state[0:3])
- 
-        # position
-        vehicle_trajectory[:,i] = rl_env.get_vehicle_position()    
-    
-    return rl_env, state_trajectory, vehicle_trajectory
-
-
 
 
 ###############################################################################

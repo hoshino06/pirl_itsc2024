@@ -29,7 +29,7 @@ class Env(CarEnv):
         self.state = np.array( list(carla_state) + [horizon] )        
         return self.state
 
-    def step(self, action_idx):
+    def step(self, action_idx=0):
         
         # make a step
         new_veh_state, reward, done = super().step( action_idx )
