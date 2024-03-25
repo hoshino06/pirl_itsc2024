@@ -210,6 +210,7 @@ if __name__ == '__main__':
                 Dense(32),  
                 Activation('tanh'), 
                 Dense(actNum),  
+                Activation('sigmoid'), # Added to constrain output in [0,1]
             ])
     
     agentOp = agentOptions(
