@@ -476,8 +476,10 @@ class CarEnv:
         
         return x_vehicle
 
-    def fetch_relative_states(self, world_map, wp_transform, interval, next_num)->(list, list):
-        relative_x = []
+    def fetch_relative_states(self, world_map = None, wp_transform, interval, next_num)->(list, list):
+        if world_map == None:
+		world_map = self.world.get_map()
+	relative_x = []
         relative_y = []
         wp_transform_list = [wp_transform]
         x = wp_transform.location.x
