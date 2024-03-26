@@ -176,7 +176,8 @@ class CarEnv:
         if self.custom_map_path: 
             self.world = load_custom_map(self.custom_map_path, self.client)
             self.all_sp = fetch_all_spawn_point(self.world)
-            #draw_path(sp.location, self.world, life_time= 600)
+            for sp in self.all_sp:
+                draw_path(sp.location, self.world, life_time= 600)
         else:
             if not self.world.get_map().name == 'Carla/Maps/Town02':
                 self.world  = self.client.load_world('Town02')
@@ -331,13 +332,13 @@ class CarEnv:
         rotation = spawn_point.rotation
         yaw_st   = spawn_point.rotation.yaw
         x_wld, y_wld = self.local2world(x_loc, y_loc, yaw_st)
-        location = spawn_point.location + carla.Location(x=x_wld, y=y_wld, z=0)
+        location = spawn_point.location + carla.Location(x=x_wld, y=y_wld, z=-0.3)
         rotation = carla.Rotation( yaw = yaw_st + psi_loc )
         trans = carla.Transform(location, rotation)
         self.vehicle.set_transform(trans)
      
         # Set vehicle vlocity
-        world_vx, world_vy = self.local2world(vx, vy, rotation.yaw)        
+        world_vx, world_vy = self.local2world(vx, vy, rotation.yaw)     
         velocity_world = carla.Vector3D(world_vx, world_vy, 0)
         self.vehicle.set_target_velocity(velocity_world) # effective after two frames
      
@@ -347,6 +348,7 @@ class CarEnv:
 
         ##########
         # Get initial state
+        self.world.tick()
         x_vehicle = self.getVehicleState()
         x_road    = self.getRoadState()            
         initState = x_vehicle + x_road
@@ -491,8 +493,10 @@ class CarEnv:
         
         return x_vehicle
 
-    def fetch_relative_states(self, world_map, wp_transform, interval, next_num)->(list, list):
-        relative_x = []
+    def fetch_relative_states(self, world_map = None, wp_transform, interval, next_num)->(list, list):
+        if world_map == None:
+		world_map = self.world.get_map()
+	relative_x = []
         relative_y = []
         wp_transform_list = [wp_transform]
         x = wp_transform.location.x
@@ -636,23 +640,52 @@ def spawn_train_map_c_north_east(carla_env):
     start_point = {'location':{'x':-1005.518188, 'y':203.016663, 'z':0.500000}, 'rotation':{'pitch':0.000000,'yaw':0.000000,'roll':0.000000}}
     corner_point = {'location':{'x':-967.017395, 'y':203.016663, 'z':0.500000}, 'rotation':{'pitch':0.000000,'yaw':0.000000,'roll':0.000000}}
     end_point = {'location':{'x':-967.017395, 'y':230.016663, 'z':0.500000},'rotation':{'pitch':0.000000,'yaw':89.99954,'roll':0.000000}}
-    
-    def random_spawn_point_corner_new_map(spawn_point, start, corner, end):
+
+    def random_spawn_point_corner_mapC(spawn_point, start: "dict", corner: "dict", end: "dict"):
         dist_1 = abs(corner['location']['x']-start['location']['x'])
         dist_2 = abs(end['location']['y']-corner['location']['y'])
         distance = dist_1 + dist_2
         eps = np.random.rand()
+        #eps = np.max([np.min([np.random.normal(loc = float(dist_1/distance), scale=0.2),1]), 0])
         rand_dist = eps*distance
         if rand_dist < dist_1:
-            # 2nd phase, moving in y direction
-            new_spawn_point = carla.Transform(carla.Location(corner['location']['x'], corner['location']['y'], corner['location']['z']), carla.Rotation(end['rotation']['pitch'], end['rotation']['yaw'], end['rotation']['roll']))
-        else:
             # 1nd phase, moving in x direction
-            new_spawn_point = carla.Transform(carla.Location((start['location']['x']), start['location']['y'], start['location']['z']), spawn_point.rotation)
-        return new_spawn_point
+            spawn_pos   = carla.Location((start['location']['x']+rand_dist), start['location']['y'], start['location']['z'])
+            spawn_rot   = carla.Rotation(start['rotation']['pitch'], start['rotation']['yaw'], start['rotation']['roll'])
+            spawn_point = carla.Transform(spawn_pos, spawn_rot)
+        else:
+            # 2nd phase, moving in y direction
+            spawn_pos   = carla.Location(corner['location']['x'], corner['location']['y']+(rand_dist-dist_1), corner['location']['z'])
+            spawn_point = carla.Transform(spawn_pos, spawn_point.rotation)
+        return spawn_point    
+
+    # def random_spawn_point_corner_new_map(spawn_point, start, corner, end):
+    #     dist_1 = abs(corner['location']['x']-start['location']['x'])
+    #     dist_2 = abs(end['location']['y']-corner['location']['y'])
+    #     distance = dist_1 + dist_2
+    #     eps = np.random.rand()
+    #     rand_dist = eps*distance
+    #     if rand_dist < dist_1:
+    #         # 2nd phase, moving in y direction
+    #         new_spawn_point = carla.Transform(carla.Location(corner['location']['x'], corner['location']['y'], corner['location']['z']), carla.Rotation(end['rotation']['pitch'], end['rotation']['yaw'], end['rotation']['roll']))
+    #     else:
+    #         # 1nd phase, moving in x direction
+    #         new_spawn_point = carla.Transform(carla.Location((start['location']['x']), start['location']['y'], start['location']['z']), spawn_point.rotation)
+    #     return new_spawn_point
     
-    spawn_point = random_spawn_point_corner_new_map(current_spawn_point,start_point, corner_point, end_point)            
-    #print(spawn_point)
+    spawn_point_beta = random_spawn_point_corner_mapC(current_spawn_point,start_point, corner_point, end_point)            
+
+    way_point = carla_env.world.get_map().get_waypoint(spawn_point_beta.location, project_to_road=True)
+    if way_point.lane_width < 20:
+        right_way_point = way_point.get_right_lane()
+        left_way_point = way_point.get_left_lane()
+        way_point = right_way_point if right_way_point.lane_width > left_way_point.lane_width else left_way_point
+
+    x_rd   = way_point.transform.location.x
+    y_rd   = way_point.transform.location.y
+    yaw_rd = way_point.transform.rotation.yaw
+    spawn_point = carla.Transform(carla.Location(x_rd, y_rd,0.20000), 
+                                  carla.Rotation(0, yaw_rd, 0))  
     
     return spawn_point
 

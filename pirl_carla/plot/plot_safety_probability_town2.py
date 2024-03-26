@@ -16,6 +16,7 @@ from keras.optimizers import Adam
 # PIRL agent and CarEnv
 sys.path.append(os.pardir)
 sys.path.append('.')
+
 from rl_agent.PIRL_DQN import PIRLagent, agentOptions, pinnOptions
 from training_pirl_Town2 import Env, convection_model, diffusion_model, sample_for_pinn
 
@@ -56,6 +57,7 @@ def load_agent(env):
     
     agent  = PIRLagent(model, actNum, agentOp, pinnOp)
     agent.load_weights('../logs/Town2/03221441', ckpt_idx='latest')
+    agent.load_weights('../logs/Town2/03201529', ckpt_idx='latest')
     
     return agent
 
@@ -84,7 +86,6 @@ if __name__ == '__main__':
                         spectator_init  = spec_town2, 
                         spectator_reset = False, 
                         autopilot       = False)
-
         rl_env.reset()
         #rl_env.step()
         x_vehicle = rl_env.getVehicleState()
@@ -138,6 +139,4 @@ if __name__ == '__main__':
         if 'rl_env' in locals():
             rl_env.destroy()
         
-    
-
-
+   

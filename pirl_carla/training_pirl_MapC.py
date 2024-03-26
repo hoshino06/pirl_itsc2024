@@ -116,9 +116,9 @@ def sample_for_pinn():
 
     n_dim = 15 + 1
     T    = 5
-    Emax = 8 
-    x_vehicle_max = np.concatenate( [np.array([20, 30, 360]+[ Emax, 180]), np.ones(10)*10] )
-    x_vehicle_min = np.concatenate( [np.array([ 5,-30,-360]+[-Emax,-180]),-np.ones(10)*10] )
+    Emax = 8
+    x_vehicle_max = np.concatenate( [np.array([20, 30, 360]+[ Emax, 180]), np.ones(10)*3] )
+    x_vehicle_min = np.concatenate( [np.array([ 5,-30,-360]+[-Emax,-180]),-np.ones(10)*3] )
 
     #######################
     # Interior points    
@@ -159,9 +159,9 @@ if __name__ == '__main__':
 
     ###########################################################################
     # Environment
-    carla_port = 4000
+    carla_port = 3000
     time_step  = 0.05    
-    map_train        = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
+    map_train  = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
 
     # spawn method (initial vehicle location)
     def random_spawn_point(carla_env):
@@ -177,10 +177,10 @@ if __name__ == '__main__':
         # position and angle
         x_loc    = 0
         y_loc    = 0 #np.random.uniform(-5,5)
-        psi_loc  = np.random.uniform(-60,60)
+        psi_loc  = np.random.uniform(-30,30)
         # velocity and yaw rate
-        vx = 10
-        vy = 0.5* float(vx * np.random.rand(1)) 
+        vx = 20
+        vy = 0.5*float(vx * np.random.rand(1)) 
         yaw_rate = np.random.uniform(-360,360)       
         
         # It must return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
@@ -210,6 +210,7 @@ if __name__ == '__main__':
                 Dense(32),  
                 Activation('tanh'), 
                 Dense(actNum),  
+                Activation('sigmoid'), # Added to constrain output in [0,1]
             ])
     
     agentOp = agentOptions(
@@ -226,7 +227,7 @@ if __name__ == '__main__':
         CONVECTION_MODEL = convection_model,
         DIFFUSION_MODEL  = diffusion_model,   
         SAMPLING_FUN     = sample_for_pinn,
-        WEIGHT_PDE       = 1e-5, 
+        WEIGHT_PDE       = 1e-4, 
         WEIGHT_BOUNDARY  = 1, 
         HESSIAN_CALC     = False,
         )
@@ -244,7 +245,7 @@ if __name__ == '__main__':
     """
     
     trainOp = trainOptions(
-        EPISODES = 30_000, 
+        EPISODES = 25_000, 
         SHOW_PROGRESS = True, 
         LOG_DIR     = LOG_DIR,
         SAVE_AGENTS = True, 
