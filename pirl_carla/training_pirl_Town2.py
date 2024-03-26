@@ -112,7 +112,7 @@ def diffusion_model(x_and_actIdx):
  
     return diff
 
-def sample_for_pinn():
+def sample_for_pinn(replay_memory):
 
     n_dim = 15 + 1
     T    = 5
@@ -163,7 +163,7 @@ if __name__ == '__main__':
     carla_port = 4000
     time_step  = 0.05    
     map_train  = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
-    restart = True
+    restart    = False
 
     # spawn method (initial vehicle location)
     def random_spawn_point(carla_env):
@@ -218,7 +218,7 @@ if __name__ == '__main__':
         REPLAY_MEMORY_SIZE = 5000, 
         REPLAY_MEMORY_MIN  = 1000,
         MINIBATCH_SIZE     = 32,
-        EPSILON_INIT        = 0.9998**20_000, # 1, 
+        EPSILON_INIT        = 1, 
         EPSILON_DECAY       = 0.9998, 
         EPSILON_MIN         = 0.01,
         )
@@ -259,7 +259,7 @@ if __name__ == '__main__':
         LOG_DIR     = LOG_DIR,
         SAVE_AGENTS = True, 
         SAVE_FREQ   = 500,
-        RESTART_EP= current_ep
+        RESTART_EP  = current_ep
         )
     agentOp['RESTART_EP'] = current_ep
 

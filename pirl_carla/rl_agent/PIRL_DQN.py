@@ -165,7 +165,7 @@ class PIRLagent:
 
         ##########################
         # Samples for PDE
-        X_PDE, X_BDini, X_BDsafe = self.pinnOp['SAMPLING_FUN']()
+        X_PDE, X_BDini, X_BDsafe = self.pinnOp['SAMPLING_FUN'](self.replay_memory)
         X_PDE = tf.Variable(X_PDE)        
 
         # Convection and diffusion coefficient
