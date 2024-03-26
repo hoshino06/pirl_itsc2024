@@ -198,12 +198,29 @@ class CarEnv:
         vehicle_bp = blueprint_library.filter(self.actor_filter)[0]
         if self.spawn_method:         
             spawn_point = self.spawn_method(self)
+            spawn_point.location.z = 0.5
         else:
             spawn_point = self.all_sp[1]
+            spawn_point.location.z = 0.5
+        print(spawn_point)
+        
+        
+        # for plotting exception
+        """Done = False
+        while not Done:
+            i = np.random.randint(0, len(self.all_sp))
+            spawn_point = self.all_sp[i]
+            try:    
+                self.vehicle = self.world.spawn_actor(vehicle_bp, spawn_point)
+                Done = True
+                
+            except:
+                i = np.random.randint(0, len(self.all_sp))"""
+            
         self.vehicle = self.world.spawn_actor(vehicle_bp, spawn_point)
         self.actor_list.append(self.vehicle)
         if self.autopilot:
-            self.vehicle.set_autopilot(True)  # if you just wanted some NPCs to drive.
+            self.vehicle.set_autopilot(True, port)  # if you just wanted some NPCs to drive.
             print('Vehicle was spawned with auto pilot mode')
 
         # Change paramters
