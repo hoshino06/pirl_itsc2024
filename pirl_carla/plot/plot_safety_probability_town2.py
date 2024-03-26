@@ -12,7 +12,6 @@ from keras.models import Sequential
 from keras.layers import Dense, Activation
 from keras.optimizers import Adam
 
-
 # PIRL agent and CarEnv
 sys.path.append(os.pardir)
 sys.path.append('.')
@@ -56,8 +55,7 @@ def load_agent(env):
         )    
     
     agent  = PIRLagent(model, actNum, agentOp, pinnOp)
-    agent.load_weights('../logs/Town2/03221441', ckpt_idx='latest')
-    agent.load_weights('../logs/Town2/03201529', ckpt_idx='latest')
+    agent.load_weights('../ITSC2024data/MapC/hoshino/03250427', ckpt_idx='latest')
     
     return agent
 
@@ -67,7 +65,7 @@ if __name__ == '__main__':
     
     ###########################
     # Get nominal trajectory
-    carla_port = 5000
+    carla_port = 3000
     time_step  = 0.05    
     spec_town2 = {'x':-7.39, 'y':312, 'z':10.2, 'pitch':-20, 'yaw':-45, 'roll':0}    
 
@@ -112,7 +110,7 @@ if __name__ == '__main__':
             interval = 0.5
             next_num = 5
             refer_point = rl_env.world.get_map().get_spawn_points()[0]
-            vector_list, waypoints = rl_env.fetch_relative_states(world_map = None, wp_transform = refer_point, interval= interval, next_num= next_num)
+            vector_list, waypoints = rl_env.fetch_relative_states(wp_transform = refer_point, interval= interval, next_num= next_num)
             #print(vector_list)
             #print(type(vector_list))
             x_road = [0, 0] + vector_list
