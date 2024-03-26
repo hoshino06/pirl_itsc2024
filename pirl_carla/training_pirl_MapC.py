@@ -177,9 +177,9 @@ if __name__ == '__main__':
         # position and angle
         x_loc    = 0
         y_loc    = 0 #np.random.uniform(-5,5)
-        psi_loc  = np.random.uniform(-60,60)
+        psi_loc  = np.random.uniform(-30,30)
         # velocity and yaw rate
-        vx = 10
+        vx = 20
         vy = 0.5*float(vx * np.random.rand(1)) 
         yaw_rate = np.random.uniform(-360,360)       
         
@@ -245,7 +245,7 @@ if __name__ == '__main__':
     """
     
     trainOp = trainOptions(
-        EPISODES = 30_000, 
+        EPISODES = 25_000, 
         SHOW_PROGRESS = True, 
         LOG_DIR     = LOG_DIR,
         SAVE_AGENTS = True, 
