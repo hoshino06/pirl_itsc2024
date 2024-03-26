@@ -160,7 +160,7 @@ if __name__ == '__main__':
 
     ###########################################################################
     # Environment
-    carla_port = 5000
+    carla_port = 4000
     time_step  = 0.05    
     map_train  = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
     restart = True
@@ -258,7 +258,7 @@ if __name__ == '__main__':
         SHOW_PROGRESS = True, 
         LOG_DIR     = LOG_DIR,
         SAVE_AGENTS = True, 
-        SAVE_FREQ   = 1000,
+        SAVE_FREQ   = 500,
         RESTART_EP= current_ep
         )
     agentOp['RESTART_EP'] = current_ep

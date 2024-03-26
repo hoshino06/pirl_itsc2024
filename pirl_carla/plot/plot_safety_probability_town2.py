@@ -15,6 +15,8 @@ from keras.optimizers import Adam
 
 # PIRL agent and CarEnv
 sys.path.append(os.pardir)
+sys.path.append('.')
+
 from rl_agent.PIRL_DQN import PIRLagent, agentOptions, pinnOptions
 from training_pirl_Town2 import Env, convection_model, diffusion_model, sample_for_pinn
 
@@ -48,12 +50,13 @@ def load_agent(env):
         CONVECTION_MODEL = convection_model,
         DIFFUSION_MODEL  = diffusion_model,   
         SAMPLING_FUN     = sample_for_pinn,
-        WEIGHT_PDE       = 1e-5, 
+        WEIGHT_PDE       = 1e-4, 
         WEIGHT_BOUNDARY  = 1, 
         HESSIAN_CALC     = False,
         )    
     
     agent  = PIRLagent(model, actNum, agentOp, pinnOp)
+    agent.load_weights('../logs/Town2/03221441', ckpt_idx='latest')
     agent.load_weights('../logs/Town2/03201529', ckpt_idx='latest')
     
     return agent
@@ -79,13 +82,12 @@ if __name__ == '__main__':
         # carla_env
         rl_env = Env(port=carla_port, time_step=time_step, 
                         custom_map_path = None,
-                        spawn_method    = choose_spawn_point,
+                        spawn_method    = None,# choose_spawn_point,
                         spectator_init  = spec_town2, 
                         spectator_reset = False, 
-                        autopilot       = True)
-
+                        autopilot       = False)
         rl_env.reset()
-        rl_env.step()
+        #rl_env.step()
         x_vehicle = rl_env.getVehicleState()
         x_road    = rl_env.getRoadState() 
 
@@ -107,8 +109,21 @@ if __name__ == '__main__':
             
             x_vehicle = np.array( [10, 0, 0] )
             x_road    = np.array( rl_env.getRoadState() )
+            interval = 0.5
+            next_num = 5
+            refer_point = rl_env.world.get_map().get_spawn_points()[0]
+            vector_list, waypoints = rl_env.fetch_relative_states(world_map = None, wp_transform = refer_point, interval= interval, next_num= next_num)
+            #print(vector_list)
+            #print(type(vector_list))
+            x_road = [0, 0] + vector_list
+            
+            
+            x_road = np.asarray(x_road)
+            #print(x_road)
+            #print(x_road.shape)
+            
             x_road[0] = e
-            x_road[1] = 0
+            x_road[1] = 30
             s         = np.concatenate([ x_vehicle, x_road, np.array([horizon]) ])                        
             
             v_list[i] = np.max(agent.get_qs(s))    
@@ -116,7 +131,7 @@ if __name__ == '__main__':
         plt.plot(e_list, v_list, 'k', alpha=0.5, lw=0.5)
         plt.xlabel('Lateral error [m]')
         plt.ylabel('Safety probability')
-
+        plt.show()
     except KeyboardInterrupt:
         print('\nCancelled by user - training.py.')
 
@@ -124,7 +139,4 @@ if __name__ == '__main__':
         if 'rl_env' in locals():
             rl_env.destroy()
         
-    
-
-
-
+   
