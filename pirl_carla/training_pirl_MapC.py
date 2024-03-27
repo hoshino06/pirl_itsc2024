@@ -112,12 +112,12 @@ def diffusion_model(x_and_actIdx):
  
     return diff
 
-def sample_for_pinn():
+def sample_for_pinn(replay_memory):
 
     n_dim = 15 + 1
     T    = 5
     Emax = 8
-    x_vehicle_max = np.concatenate( [np.array([20, 30, 360]+[ Emax, 180]), np.ones(10)*3] )
+    x_vehicle_max = np.concatenate( [np.array([30, 30, 360]+[ Emax, 180]), np.ones(10)*3] )
     x_vehicle_min = np.concatenate( [np.array([ 5,-30,-360]+[-Emax,-180]),-np.ones(10)*3] )
 
     #######################
@@ -217,7 +217,7 @@ if __name__ == '__main__':
         DISCOUNT   = 1, 
         OPTIMIZER  = Adam(learning_rate=1e-4),
         REPLAY_MEMORY_SIZE = 5000, 
-        REPLAY_MEMORY_MIN  = 1000,
+        REPLAY_MEMORY_MIN  = 100,
         MINIBATCH_SIZE     = 32,
         EPSILON_DECAY      = 0.9998, 
         EPSILON_MIN        = 0.01,
@@ -245,11 +245,11 @@ if __name__ == '__main__':
     """
     
     trainOp = trainOptions(
-        EPISODES = 25_000, 
+        EPISODES      = 25_000, 
         SHOW_PROGRESS = True, 
-        LOG_DIR     = LOG_DIR,
-        SAVE_AGENTS = True, 
-        SAVE_FREQ   = 1000,
+        LOG_DIR       = None, #LOG_DIR,
+        SAVE_AGENTS   = True, 
+        SAVE_FREQ     = 1000,
         )
 
     ######################################
