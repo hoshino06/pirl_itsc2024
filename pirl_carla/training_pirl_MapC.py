@@ -170,18 +170,18 @@ if __name__ == '__main__':
         spawn_point = sp_list[rand_1]
         return spawn_point
 
-
     # vehicle state initialization
     def vehicle_reset_method(): 
         
         # position and angle
         x_loc    = 0
-        y_loc    = 0 #np.random.uniform(-5,5)
-        psi_loc  = np.random.uniform(-30,30)
+        y_loc    = np.random.uniform(0,3)
+        psi_loc  = 0 #np.random.uniform(-20,20)
         # velocity and yaw rate
-        vx = 20
-        vy = 0.5*float(vx * np.random.rand(1)) 
-        yaw_rate = np.random.uniform(-360,360)       
+        vx = np.random.uniform(15,25)
+        rand_num = np.random.uniform(-0.5, 0)
+        vy       = 0.5*vx*rand_num 
+        yaw_rate = -90*rand_num 
         
         # It must return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
         return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
@@ -192,9 +192,10 @@ if __name__ == '__main__':
 
     env    = Env(port=carla_port, time_step=time_step,
                  custom_map_path = map_train,
-                 actor_filter = 'vehicle.audi.tt',  
-                 spawn_method = spawn_train_map_c_north_east,
-                 vehicle_reset= vehicle_reset_method, 
+                 actor_filter    = 'vehicle.audi.tt',  
+                 spawn_method    = spawn_train_map_c_north_east,
+                 vehicle_reset   = vehicle_reset_method, 
+                 waypoint_itvl   = 3.0,
                  spectator_init  = spec_mapC_NorthEast, #None, 
                  spectator_reset = False, #True                  
                  )
@@ -215,7 +216,7 @@ if __name__ == '__main__':
     
     agentOp = agentOptions(
         DISCOUNT   = 1, 
-        OPTIMIZER  = Adam(learning_rate=1e-4),
+        OPTIMIZER  = Adam(learning_rate=1e-3),
         REPLAY_MEMORY_SIZE = 5000, 
         REPLAY_MEMORY_MIN  = 100,
         MINIBATCH_SIZE     = 32,
@@ -245,9 +246,9 @@ if __name__ == '__main__':
     """
     
     trainOp = trainOptions(
-        EPISODES      = 25_000, 
+        EPISODES      = 30_000, 
         SHOW_PROGRESS = True, 
-        LOG_DIR       = None, #LOG_DIR,
+        LOG_DIR       = LOG_DIR,
         SAVE_AGENTS   = True, 
         SAVE_FREQ     = 1000,
         )

@@ -146,6 +146,7 @@ class CarEnv:
                  spectator_init  = None,
                  spectator_reset = True, 
                  camera_view     = None, 
+                 waypoint_itvl   = 0.5, 
                  initial_speed   = 10):
         """
         Connect to Carla server, spawn vehicle, and initialize variables 
@@ -160,6 +161,7 @@ class CarEnv:
         self.spectator_init        = spectator_init
         self.spectator_reset       = spectator_reset
         self.camera_view           = camera_view
+        self.waypoint_itvl         = waypoint_itvl
         self.initial_speed         = initial_speed
 
         ##############################
@@ -541,7 +543,7 @@ class CarEnv:
         
         #draw_path(way_point.transform.location, self.world, life_time=10.0)
         wp_transform = way_point.transform
-        interval = 0.5
+        interval = self.waypoint_itvl
         next_num = 5
         vector_list, future_wp_list = self.fetch_relative_states(wp_transform, interval, next_num)
         x_rd   = way_point.transform.location.x
