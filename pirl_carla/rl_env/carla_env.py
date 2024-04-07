@@ -452,8 +452,11 @@ class CarEnv:
             else:
                 isDone  = False
                 reward  = 0
-        else: 
+        else:  # MapC
             if np.abs( lat_err ) > 8:  # Unsafe
+                isDone = True
+                reward = 0
+            elif x_vehicle[0] < 5:  # to prevent too slow driving
                 isDone = True
                 reward = 0
             else:
@@ -691,6 +694,20 @@ def spawn_train_map_c_north_east(carla_env):
     
     return spawn_point
 
+###############################################################################
+def map_c_before_corner(carla_env):
+
+    start       = {'location':{'x':-1005.518188, 'y':203.016663, 'z':0.500000}, 'rotation':{'pitch':0.000000,'yaw':0.000000,'roll':0.000000}}
+    spawn_pos   = carla.Location(start['location']['x'], start['location']['y'], start['location']['z'])
+    spawn_rot   = carla.Rotation(start['rotation']['pitch'], start['rotation']['yaw'], start['rotation']['roll'])
+    spawn_point = carla.Transform(spawn_pos, spawn_rot)
+    way_point   = carla_env.world.get_map().get_waypoint(spawn_point.location, project_to_road=True)    
+    x_rd   = way_point.transform.location.x
+    y_rd   = way_point.transform.location.y
+    yaw_rd = way_point.transform.rotation.yaw
+    spawn_point = carla.Transform(carla.Location(x_rd, y_rd,0.20000), 
+                                  carla.Rotation(0, yaw_rd, 0))  
+    return spawn_point
 
 ##############################################################################
 # Test code for carl_env

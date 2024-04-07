@@ -15,7 +15,7 @@ from keras.optimizers import Adam
 
 # PIRL agent
 from rl_agent.PIRL_DQN import PIRLagent, agentOptions, train, trainOptions, pinnOptions
-from rl_env.carla_env import CarEnv, spawn_train_map_c_north_east
+from rl_env.carla_env import CarEnv, spawn_train_map_c_north_east, map_c_before_corner
 
 # carla environment
 class Env(CarEnv):
@@ -25,7 +25,8 @@ class Env(CarEnv):
         
     def reset(self):
         carla_state = super().reset()
-        horizon     = 5.0 * np.random.rand()
+        #horizon     = 5.0 * np.random.rand()
+        horizon     = np.random.uniform(2.5, 5)
         self.state = np.array( list(carla_state) + [horizon] )        
         return self.state
 
@@ -170,18 +171,18 @@ if __name__ == '__main__':
         spawn_point = sp_list[rand_1]
         return spawn_point
 
+
     # vehicle state initialization
-    def vehicle_reset_method(): 
-        
+    def vehicle_reset_method():
         # position and angle
         x_loc    = 0
-        y_loc    = np.random.uniform(0,3)
+        y_loc    = 0 
         psi_loc  = 0 #np.random.uniform(-20,20)
         # velocity and yaw rate
-        vx = np.random.uniform(15,25)
-        rand_num = np.random.uniform(-0.5, 0)
+        vx       = 30 #np.random.uniform(15,25)
+        rand_num = np.random.uniform(-0.75, -0.85)
         vy       = 0.5*vx*rand_num 
-        yaw_rate = -90*rand_num 
+        yaw_rate = -80*rand_num 
         
         # It must return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
         return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
@@ -193,7 +194,7 @@ if __name__ == '__main__':
     env    = Env(port=carla_port, time_step=time_step,
                  custom_map_path = map_train,
                  actor_filter    = 'vehicle.audi.tt',  
-                 spawn_method    = spawn_train_map_c_north_east,
+                 spawn_method    = map_c_before_corner, #spawn_train_map_c_north_east,
                  vehicle_reset   = vehicle_reset_method, 
                  waypoint_itvl   = 3.0,
                  spectator_init  = spec_mapC_NorthEast, #None, 
@@ -216,7 +217,7 @@ if __name__ == '__main__':
     
     agentOp = agentOptions(
         DISCOUNT   = 1, 
-        OPTIMIZER  = Adam(learning_rate=1e-3),
+        OPTIMIZER  = Adam(learning_rate=1e-4),
         REPLAY_MEMORY_SIZE = 5000, 
         REPLAY_MEMORY_MIN  = 100,
         MINIBATCH_SIZE     = 32,
