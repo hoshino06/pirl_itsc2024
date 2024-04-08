@@ -239,9 +239,19 @@ if __name__ == '__main__':
 
     ######################################
     # Training option
+    restart    = True
 
-    #LOG_DIR = None
-    LOG_DIR = 'logs/MapC/'+datetime.now().strftime('%m%d%H%M')
+    if restart == True:
+        LOG_DIR = "logs/MapC/04071140/" # Set log dir
+        ckp_path = agent.load_weights(LOG_DIR, ckpt_idx='latest')
+        current_ep = int(ckp_path.split('-')[-1].split('.')[0])
+        print(current_ep)
+        agent.load_weights(LOG_DIR, ckpt_idx='latest')
+
+    else:
+        LOG_DIR = 'logs/MapC/'+datetime.now().strftime('%m%d%H%M')
+        current_ep = None
+
     """
     $ tensorboard --logdir logs/...
     """
@@ -252,7 +262,10 @@ if __name__ == '__main__':
         LOG_DIR       = LOG_DIR,
         SAVE_AGENTS   = True, 
         SAVE_FREQ     = 1000,
+        RESTART_EP    = current_ep
         )
+    agentOp['RESTART_EP'] = current_ep
+
 
     ######################################
     # Train 
