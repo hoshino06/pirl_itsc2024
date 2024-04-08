@@ -36,3 +36,15 @@ ITSC2024data/MapC/hoshino
     vy       = 0.5*vx*rand_num 
     yaw_rate = -80*rand_num 
 
+04071140-19k: 30m/s, fixed spawn point, lr=1e-4
+    # horizon
+    horizon     = np.random.uniform(2.5, 5)
+    # position and angle
+    x_loc    = 0
+    y_loc    = 0 
+    psi_loc  = 0 #np.random.uniform(-20,20)
+    # velocity and yaw rate
+    vx       = 30 #np.random.uniform(15,25)
+    rand_num = np.random.uniform(-0.75, -0.85)
+    vy       = 0.5*vx*rand_num 
+    yaw_rate = -80*rand_num 
