@@ -49,7 +49,7 @@ def load_custom_map(xodr_path, client):
                 enable_mesh_visibility=True))
     else:
         print(os.getcwd())
-        raise FileNotFoundError('Custom map file not found')
+        raise FileNotFoundError(f'Custom map file not found: {xodr_path}')
     return world
 
 def draw_path(location, world, life_time=1.0, string = None):
@@ -693,6 +693,61 @@ def spawn_train_map_c_north_east(carla_env):
                                   carla.Rotation(0, yaw_rd, 0))  
     
     return spawn_point
+
+
+###############################################################################
+def road_info_map_c_north_east(carla_env, num_sp):
+    
+    start_point  = {'x':-1005.518188, 'y':203.016663, 'z':0.500000}
+    corner_point = {'x':-967.017395,  'y':203.016663, 'z':0.500000}
+    end_point    = {'x':-967.017395,  'y':230.016663+20, 'z':0.500000}
+
+    def get_waypoint_corner_mapC(i, start: "dict", corner: "dict", end: "dict"):
+        dist_1 = abs(corner['x']-start['x'])
+        dist_2 = abs(end['y']-corner['y'])
+        distance = dist_1 + dist_2
+
+        rand_dist = i*distance
+        if rand_dist < dist_1:
+            # 1nd phase, moving in x direction
+            spawn_pos   = carla.Location((start['x']+rand_dist), start['y'], start['z'])
+        else:
+            # 2nd phase, moving in y direction
+            spawn_pos   = carla.Location(corner['x'], corner['y']+(rand_dist-dist_1), corner['z'])
+
+        way_point = carla_env.world.get_map().get_waypoint(spawn_pos, project_to_road=True)
+        if way_point.lane_width < 20:
+            right_way_point = way_point.get_right_lane()
+            left_way_point = way_point.get_left_lane()
+            way_point = right_way_point if right_way_point.lane_width > left_way_point.lane_width else left_way_point
+
+        return way_point    
+
+    sp_points    = []
+    left_points  = []
+    right_points = []
+    for i in np.linspace(0, 1, num_sp):    
+
+        # Center line
+        way_point = get_waypoint_corner_mapC(i, start_point, corner_point, end_point)    
+        x_rd   = way_point.transform.location.x
+        y_rd   = way_point.transform.location.y
+        yaw_rd = way_point.transform.rotation.yaw
+        sp_points.append([x_rd, y_rd, yaw_rd])    
+        
+        # Left and right boundaries
+        x_loc, y_loc = [0, -8]
+        x_wld, y_wld = carla_env.local2world(x_loc, y_loc, yaw_rd)
+        location     = way_point.transform.location + carla.Location(x=x_wld, y=y_wld, z=0)
+        left_points.append([location.x, location.y])        
+        
+        x_loc, y_loc = [0,  8]
+        x_wld, y_wld = carla_env.local2world(x_loc, y_loc, yaw_rd)
+        location     = way_point.transform.location + carla.Location(x=x_wld, y=y_wld, z=0)
+        right_points.append([location.x, location.y])        
+        
+    return sp_points, left_points, right_points
+
 
 ###############################################################################
 def map_c_before_corner(carla_env):

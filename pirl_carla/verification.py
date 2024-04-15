@@ -70,7 +70,7 @@ if __name__ == '__main__':
     # Environment
     carla_port = 3000
     time_step  = 0.05 
-    map_for_testing = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/test.xodr"
+    map_for_testing = "/home/ubuntu-root/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/test.xodr"
 
     env    = Env(port=carla_port, time_step=time_step, 
                  custom_map_path = map_for_testing)
