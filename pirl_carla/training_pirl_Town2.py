@@ -120,18 +120,29 @@ def sample_for_pinn(replay_memory):
     x_vehicle_max = np.concatenate( [np.array([15, 30, 60]+[ Emax,  90]), np.ones(10)*10] )
     x_vehicle_min = np.concatenate( [np.array([ 5,-30,-60]+[-Emax, -90]),-np.ones(10)*10] )
 
+
     #######################
     # Interior points    
     nPDE  = 32
     x_max = np.array( list(x_vehicle_max) + [T] )
     x_min = np.array( list(x_vehicle_min) + [0] )
     X_PDE = x_min + (x_max - x_min)* np.random.rand(nPDE, n_dim)
+    sample_state = [replay_memory[np.random.randint(0,len(replay_memory))][0]\
+                    for i in range(nPDE)]
+    X_PDE[:,5: -1] = np.asarray(sample_state)[:, 5:-1]
+    assert X_PDE.shape == (nPDE, n_dim)
+
 
     # Terminal boundary (at T=0 and safe)
     nBDini  = 32
     x_max = np.array( list(x_vehicle_max) + [0] )
     x_min = np.array( list(x_vehicle_min) + [0] )
     X_BD_TERM = x_min + (x_max - x_min) * np.random.rand(nBDini, n_dim)
+    sample_state = [replay_memory[np.random.randint(0,len(replay_memory))][0]\
+                    for i in range(nBDini)]
+    sample_state[:, 15] = 0
+    X_BD_TERM[:,5: -1] = np.asarray(sample_state)[:, 5:-1]
+    assert X_BD_TERM.shape == (nBDini, n_dim)
 
     # Lateral boundary (unsafe set)        
     nBDsafe = 32
@@ -140,6 +151,11 @@ def sample_for_pinn(replay_memory):
     Emax = 1.0 
     X_BD_LAT = x_min + (x_max - x_min)* np.random.rand(nBDsafe, n_dim)
     X_BD_LAT[:,3] = np.random.choice([-Emax, Emax], size=nBDsafe)    
+    sample_state = [replay_memory[np.random.randint(0,len(replay_memory))][0]\
+                    for i in range(nBDsafe)]
+    X_BD_LAT[:,5: -1] = np.asarray(sample_state)[:, 5:-1]
+    X_BD_LAT[:,3] = np.random.choice([-Emax, Emax], size=nBDsafe)
+    assert X_BD_LAT.shape == (nBDsafe, n_dim)
     
     return X_PDE, X_BD_TERM, X_BD_LAT
     
