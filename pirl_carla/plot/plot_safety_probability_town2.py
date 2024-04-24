@@ -150,7 +150,7 @@ if __name__ == '__main__':
         
         agent = load_agent(rl_env)
         rslu = 40
-        psi_scale = 3
+        psi_scale = 0.5
         e_scale = 1.1
         e_list = np.linspace(-1.1, 1.1, rslu)
         v_list = np.linspace(5, 20, rslu)
@@ -159,13 +159,13 @@ if __name__ == '__main__':
         interval = 0.5
         next_num = 0
         
-        key =  ["e", "psi"]
+        key =  ["v", "psi"]
         if key[1]=="psi":
             eps = 0.9 # initial distance
         else:
-            eps = 0.1 # initial distance
+            eps = 0.5 # initial distance
         multi_test = False
-        n = 10 #number of test points
+        n = 10 #number of test points if multi_test == True
         
         
         
@@ -183,18 +183,6 @@ if __name__ == '__main__':
             vector, waypoints = rl_env.fetch_relative_states(wp_transform = refer_point, interval= interval, next_num= next_num)
         
         
-        
-        """
-        rl_env.world.debug.draw_string(refer_point.location, 'O', draw_shadow=False,
-                                color=carla.Color(r=255, g=0, b=0), life_time=6000,
-                                persistent_lines=True)
-        
-        
-        for waypoint in waypoints:
-            rl_env.world.debug.draw_string(waypoint.location, 'O', draw_shadow=False,
-                                    color=carla.Color(r=0, g=255, b=0), life_time=6000,
-                                    persistent_lines=True)
-        """
         x_vehicle = np.array( [10, 0, 0] )
         x_road    = np.array( rl_env.getRoadState() )
         #print(vector_list)
@@ -227,8 +215,8 @@ if __name__ == '__main__':
                         safe_p[i][j]   += np.max(agent.get_qs(s))
                     safe_p[i][j] /= n
         print_z(safe_p, psi_scale)        
-        #contour_plot(x=e_list, y=y_list, z=safe_p, key=key)
-        heatmap_plot(x=e_list, y=y_list, z=safe_p, key=key)
+        contour_plot(x=e_list, y=y_list, z=safe_p, key=key)
+        #heatmap_plot(x=e_list, y=y_list, z=safe_p, key=key)
         """        
         for i, e in enumerate(e_list):
             x_road = np.asarray(x_road)

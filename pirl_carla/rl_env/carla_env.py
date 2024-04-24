@@ -93,12 +93,16 @@ def fetch_all_spawn_point(world):
 
 ########################################
 # Get spawn point for Town 2 
-def random_spawn_point_corner(spawn_point, start: "dict", corner: "dict", end: "dict"):
+def random_spawn_point_corner(spawn_point, start: "dict", corner: "dict", end: "dict", test = False, eps = None):
     dist_1 = abs(corner['location']['y']-start['location']['y'])
     dist_2 = abs(end['location']['x']-corner['location']['x'])
     distance = dist_1 + dist_2
     #eps = np.random.rand()
-    eps = np.max([np.min([np.random.normal(loc = float(dist_1/distance), scale=0.2),1]), 0])
+    if test == False:
+        eps = np.max([np.min([np.random.normal(loc = float(dist_1/distance), scale=0.2),1]), 0])
+    elif test == True:
+        eps = eps
+    
     rand_dist = eps*distance
     if rand_dist > dist_1:
         # 2nd phase, moving in x direction
@@ -379,6 +383,21 @@ class CarEnv:
             
         return spawn_point
 
+    def test_random_spawn_point(self, eps):
+        world_map = self.world.get_map()
+        new_spawn_point = world_map.get_spawn_points()[1]
+        start_point = {'location':{'x':-7.530000, 'y':270.729980, 'z':0.500000}, 'rotation':{'pitch':0.000000,'yaw':89.99954,'roll':0.000000}}
+        corner_point = {'location':{'x':-7.390556, 'y':303.114441, 'z':0.520332}, 'rotation':{'pitch':0.000000,'yaw':0.000000,'roll':0.000000}}
+        end_point = {'location':{'x':25.694059, 'y':306.545349, 'z':0.521810},'rotation':{'pitch':0.000000,'yaw':0.000,'roll':0.000000}}
+        spawn_point_trans = random_spawn_point_corner(new_spawn_point,start_point, corner_point, end_point, test=True, eps = eps)
+        way_point = world_map.get_waypoint(spawn_point_trans.location, project_to_road=True)
+        x_rd   = way_point.transform.location.x
+        y_rd   = way_point.transform.location.y
+        yaw_rd = way_point.transform.rotation.yaw
+        spawn_point = carla.Transform(carla.Location(x_rd, y_rd,0.50000), 
+                                          carla.Rotation(0, yaw_rd, 0))  
+        return spawn_point
+    
     def set_camera(self, blueprint_library, transform):
         if len(self.actor_list) == 1:
             self.IM_WIDTH, self.IM_HEIGHT = 640, 480
