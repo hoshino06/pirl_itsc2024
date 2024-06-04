@@ -236,7 +236,7 @@ if __name__ == '__main__':
 
     ###########################
     # Environment
-    carla_port = 3000
+    carla_port = 4000
     time_step  = 0.05 
     map_train  = "/home/ubuntu-root/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
 

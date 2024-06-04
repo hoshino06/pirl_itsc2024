@@ -8,11 +8,6 @@ import numpy as np
 import random
 from datetime import datetime
 
-# keras
-from keras.models import Sequential
-from keras.layers import Dense, Activation
-from keras.optimizers import Adam
-
 from torch import nn
 from torch.optim import Adam
 
@@ -119,9 +114,9 @@ def sample_for_pinn(replay_memory):
 
     n_dim = 15 + 1
     T    = 5
-    Emax = 0.9 
-    x_vehicle_max = np.concatenate( [np.array([15, 30, 60]+[ Emax,  90]), np.ones(10)*10] )
-    x_vehicle_min = np.concatenate( [np.array([ 5,-30,-60]+[-Emax, -90]),-np.ones(10)*10] )
+    Emax = 0.95
+    x_vehicle_max = np.concatenate( [np.array([20, 10, 30]+[ Emax,  30]), np.ones(10)*10] )
+    x_vehicle_min = np.concatenate( [np.array([ 5,-10,-30]+[-Emax, -30]),-np.ones(10)*10] )
 
     #######################
     # Interior points    
@@ -129,12 +124,21 @@ def sample_for_pinn(replay_memory):
     x_max = np.array( list(x_vehicle_max) + [T] )
     x_min = np.array( list(x_vehicle_min) + [0] )
     X_PDE = x_min + (x_max - x_min)* np.random.rand(nPDE, n_dim)
+    sample_state = [replay_memory[np.random.randint(0,len(replay_memory))][0]\
+                    for i in range(nPDE)]
+    X_PDE[:,5: -1] = np.asarray(sample_state)[:, 5:-1]
+    assert X_PDE.shape == (nPDE, n_dim)
 
     # Terminal boundary (at T=0 and safe)
     nBDini  = 32
     x_max = np.array( list(x_vehicle_max) + [0] )
     x_min = np.array( list(x_vehicle_min) + [0] )
     X_BD_TERM = x_min + (x_max - x_min) * np.random.rand(nBDini, n_dim)
+    sample_state = [replay_memory[np.random.randint(0,len(replay_memory))][0]\
+                    for i in range(nBDini)]
+    #sample_state[:, 15] = 0
+    X_BD_TERM[:,5: 15] = np.asarray(sample_state)[:, 5:15]
+    assert X_BD_TERM.shape == (nBDini, n_dim)
 
     # Lateral boundary (unsafe set)        
     nBDsafe = 32
@@ -143,7 +147,12 @@ def sample_for_pinn(replay_memory):
     Emax = 1.0 
     X_BD_LAT = x_min + (x_max - x_min)* np.random.rand(nBDsafe, n_dim)
     X_BD_LAT[:,3] = np.random.choice([-Emax, Emax], size=nBDsafe)    
-    
+    sample_state = [replay_memory[np.random.randint(0,len(replay_memory))][0]\
+                    for i in range(nBDsafe)]
+    X_BD_LAT[:,5: 15] = np.asarray(sample_state)[:, 5:15]
+    X_BD_LAT[:,3] = np.random.choice([-Emax, Emax], size=nBDsafe)
+    assert X_BD_LAT.shape == (nBDsafe, n_dim)
+      
     return X_PDE, X_BD_TERM, X_BD_LAT
     
     
@@ -163,7 +172,7 @@ if __name__ == '__main__':
 
     ###########################################################################
     # Environment
-    carla_port = 3000
+    carla_port = 4000
     time_step  = 0.05    
     map_train  = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
     restart    = False
@@ -180,10 +189,10 @@ if __name__ == '__main__':
         
         # position and angle
         x_loc    = 0
-        y_loc    = 0 #np.random.uniform(-7,7)
-        psi_loc  = 0 #np.random.uniform(-60,60)
+        y_loc    = np.random.uniform(-0.5,0.5) #np.random.uniform(-0.8,0.8)
+        psi_loc  = 0 #np.random.uniform(-20,20)
         # velocity and yaw rate
-        vx = 10
+        vx = np.random.uniform(10,15)
         vy = 0 #0.5* float(vx * np.random.rand(1)) 
         yaw_rate = 0 #np.random.uniform(-360,360)       
         
@@ -225,20 +234,20 @@ if __name__ == '__main__':
     
     agentOp = agentOptions(
         DISCOUNT   = 1, 
-        OPTIMIZER  = Adam(model.parameters(), lr=1e-3),
+        OPTIMIZER  = Adam(model.parameters(), lr=5e-4),
         REPLAY_MEMORY_SIZE = 5000, 
         REPLAY_MEMORY_MIN  = 1000,
         MINIBATCH_SIZE     = 32,
         EPSILON_INIT        = 1, 
         EPSILON_DECAY       = 0.9998, 
-        EPSILON_MIN         = 0.01,
+        EPSILON_MIN         = 0.01, #0.01
         )
     
     pinnOp = pinnOptions(
         CONVECTION_MODEL = convection_model,
         DIFFUSION_MODEL  = diffusion_model,   
         SAMPLING_FUN     = sample_for_pinn,
-        WEIGHT_PDE       = 1e-4, 
+        WEIGHT_PDE       = 1e-3, #1e-4 
         WEIGHT_BOUNDARY  = 1, 
         HESSIAN_CALC     = False,
         )
@@ -248,8 +257,6 @@ if __name__ == '__main__':
 
     ######################################
     # Training option
-
-    #LOG_DIR = None
     
     if restart == True:
         LOG_DIR = "logs/Town2/03201826/"
@@ -260,16 +267,18 @@ if __name__ == '__main__':
         LOG_DIR = 'logs/Town2/'+datetime.now().strftime('%m%d%H%M')
         current_ep = None
         
+    #LOG_DIR = None
+        
     """
     $ tensorboard --logdir logs/...
     """
     
     trainOp = trainOptions(
-        EPISODES = 30_000, 
+        EPISODES = 50_000, 
         SHOW_PROGRESS = True, 
         LOG_DIR     = LOG_DIR,
         SAVE_AGENTS = True, 
-        SAVE_FREQ   = 500,
+        SAVE_FREQ   = 1000,
         RESTART_EP  = current_ep
         )
     agentOp['RESTART_EP'] = current_ep

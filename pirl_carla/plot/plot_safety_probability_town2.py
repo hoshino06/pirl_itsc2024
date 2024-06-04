@@ -114,7 +114,7 @@ if __name__ == '__main__':
     
     ###########################
     # Get nominal trajectory
-    carla_port = 5000
+    carla_port = 4000
     time_step  = 0.05    
     spec_town2 = {'x':-7.39, 'y':312, 'z':10.2, 'pitch':-20, 'yaw':-45, 'roll':0}    
 

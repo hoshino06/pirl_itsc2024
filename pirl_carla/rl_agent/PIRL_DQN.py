@@ -102,7 +102,9 @@ class PIRLagent:
         self.replay_memory.append(transition)
 
     def get_qs(self, state):
-        return self.model.predict(np.array(state).reshape(-1, *state.shape), verbose=0)[0]
+        #return self.model.predict(np.array(state).reshape(-1, *state.shape), verbose=0)[0]
+        return self.model(np.array(state).reshape(-1, *state.shape))[0]
+
 
     def get_epsilon_greedy_action(self, state):
         
