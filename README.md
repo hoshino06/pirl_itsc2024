@@ -12,7 +12,7 @@
 
 ## Start and Test Simulator
 
-- We tested codes on CARLA installed via (Package installation)[https://carla.readthedocs.io/en/0.9.15/start_quickstart/#b-package-installation]
+- We tested codes on CARLA installed via [Package installation](https://carla.readthedocs.io/en/0.9.15/start_quickstart/#b-package-installation)
 - After the installation, run CARLA while specifying the port (assume simulator is installed in `~carla/calra_0_9_15/`):
 ```console
  ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=3000 &
