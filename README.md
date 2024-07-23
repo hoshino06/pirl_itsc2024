@@ -15,7 +15,7 @@
 - We tested codes on CARLA installed via [Package installation](https://carla.readthedocs.io/en/0.9.15/start_quickstart/#b-package-installation)
 - After the installation, run CARLA while specifying the port (assume simulator is installed in `~carla/calra_0_9_15/`):
 ```console
- ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=3000 &
+ ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=2000 &
 ```
 - Run test code to make sure python API is available:
 ```console
@@ -26,7 +26,8 @@
 
 - Run training script:
   ```console
-  ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=3000 &
+  ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=2000 &
+  conda activate pirl_carla
   python training_pirl_Town2.py
   tensorboard --logdir logs/
   ```
@@ -34,3 +35,19 @@
 
 ## Safe drifting
 
+Racing circuit is used for demonstrating safe drifting. Custom map developed in [drift_drl](https://github.com/caipeide/drift_drl) is used. 
+
+
+- Run training script:
+  ```console
+  ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=4000 &
+  python training_pirl_MapC.py
+  tensorboard --logdir logs/
+  ```
+- Run verification scrpit:
+  ```console
+  ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=5000 &
+  python verification_MapC.py
+  ```
+
+  
