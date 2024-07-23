@@ -24,6 +24,12 @@
 
 ## Lane keeping with normal cornering
 
+- Run training script:
+  ```console
+  ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=3000 &
+  python training_pirl_Town2.py
+  tensorboard --logdir logs/
+  ```
 
 
 ## Safe drifting
