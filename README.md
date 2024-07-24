@@ -25,7 +25,7 @@
 ## Lane keeping with normal cornering
 
 <div align=center> 
-<img src="./pirl_carla/plot/simulation.gif" width=270 alt="Normal cornering"/>
+<img src="./pirl_carla/plot/Town2/simulation.gif" width=270 alt="Normal cornering"/>
 </div>
 
 - Run training script:
