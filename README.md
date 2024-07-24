@@ -8,7 +8,9 @@
 3. Install [CARLA simulator](https://carla.org/), which is an open-source simulator for autonomous driving research. Tested on CARLA 0.9.15. 
 4. Install [Anaconda](https://www.anaconda.com/), which is a package manager, environment manager, and Python distribution.
 5. Setup conda environment
-
+   ```console
+    conda env create -f environment_pirl_carla.yaml
+   ```
 
 ## Start and Test Simulator
 
