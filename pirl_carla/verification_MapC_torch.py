@@ -7,16 +7,13 @@ Created on Fri Feb 23 14:58:23 2024
 import numpy as np
 import random
 import matplotlib.pyplot as plt
-import pandas as pd
 from scipy.interpolate import splprep, splev
-
 from torch import nn
-from torch.optim import Adam
 
 # PIRL agent
 from rl_agent.PIRL_torch import PIRLagent, agentOptions, pinnOptions
-from training_pirl_MapC import convection_model, diffusion_model, sample_for_pinn, map_c_before_corner
-from rl_env.carla_env import CarEnv, spawn_train_map_c_north_east, map_c_before_corner, road_info_map_c_north_east
+from rl_env.carla_env   import CarEnv, map_c_before_corner, road_info_map_c_north_east
+from training_pirl_MapC import convection_model, diffusion_model, sample_for_pinn
 
 # carla environment
 class Env(CarEnv):
@@ -80,85 +77,6 @@ def closed_loop_simulation(agent, env, T):
         
     return state_trajectory, vehicle_trajectory, waypoints
 
-
-def draw_lane_boundaries():
-    # Define the start, corner, and end points
-    start_point = {'x': -1005.518188, 'y': 203.016663, 'z': 0.500000}
-    corner_point = {'x': -967.017395, 'y': 203.016663, 'z': 0.500000}
-    end_point = {'x': -967.017395, 'y': 230.016663, 'z': 0.500000}
-    
-    '''left_start = {'x': -1005.518188, 'y': 193.016663, 'z': 0.500000}
-    right_start = {'x': -1005.518188, 'y': 213.016663, 'z': 0.500000}'''
-    
-    left_start = {'x': 575.016663, 'y': 1085.518188, 'z': 0.500000}
-    right_start = {'x': 555.016663, 'y': 1085.518188, 'z': 0.500000}
-    
-    '''left_corner = {'x': -957.017395, 'y': 193.016663, 'z': 0.500000}
-    right_corner = {'x': -977.017395, 'y': 213.016663, 'z': 0.500000}'''
-    
-    left_corner = {'x': 575.016663, 'y': 960.017395, 'z': 0.500000}
-    right_corner = {'x': 555.016663, 'y': 980.017395, 'z': 0.500000}
-
-    '''left_end = {'x': -957.017395, 'y': 230.016663, 'z': 0.500000}
-    right_end = {'x': -977.017395, 'y': 230.016663, 'z': 0.500000}'''
-    
-    left_end = {'x': 515.016663, 'y': 960.017395, 'z': 0.500000}
-    right_end = {'x': 515.016663, 'y': 980.017395, 'z': 0.500000}
-
-    # Swap and invert the y values for rotation
-    start_point_rotated = {'x': start_point['y'], 'y': -start_point['x']}
-    corner_point_rotated = {'x': corner_point['y'], 'y': -corner_point['x']}
-    end_point_rotated = {'x': end_point['y'], 'y': -end_point['x']}
-    
-    left_start_rotated = {'x': left_start['y'], 'y': -left_start['x']}
-    right_start_rotated = {'x': right_start['y'], 'y': -right_start['x']}
-    
-    left_corner_rotated = {'x': left_corner['y'], 'y': -left_corner['x']}
-    right_corner_rotated = {'x': right_corner['y'], 'y': -right_corner['x']}
-    
-    left_end_rotated = {'x': left_end['y'], 'y': -left_end['x']}
-    right_end_rotated = {'x': right_end['y'], 'y': -right_end['x']}
-    
-    # Calculate rotated lane boundaries
-    left_bound_x_rotated = [left_start_rotated['x'], left_corner_rotated['x'], left_end_rotated['x']]
-    left_bound_y_rotated = [left_start_rotated['y'], left_corner_rotated['y'], left_end_rotated['y']]
-    
-    right_bound_x_rotated = [right_start_rotated['x'], right_corner_rotated['x'], right_end_rotated['x']]
-    right_bound_y_rotated = [right_start_rotated['y'], right_corner_rotated['y'], right_end_rotated['y']]
-    
-    
-    
-    # Swap back the x and y values to rotate 90 degrees clockwise
-    start_point_final = {'x': -start_point_rotated['y'], 'y': start_point_rotated['x']}
-    corner_point_final = {'x': -corner_point_rotated['y'], 'y': corner_point_rotated['x']}
-    end_point_final = {'x': -end_point_rotated['y'], 'y': end_point_rotated['x']}
-    
-    left_start_final = {'x': -left_start_rotated['y'], 'y': left_start_rotated['x']}
-    right_start_final = {'x': -right_start_rotated['y'], 'y': right_start_rotated['x']}
-    
-    left_corner_final = {'x': -left_corner_rotated['y'], 'y': left_corner_rotated['x']}
-    right_corner_final = {'x': -right_corner_rotated['y'], 'y': right_corner_rotated['x']}
-    
-    left_end_final = {'x': -left_end_rotated['y'], 'y': left_end_rotated['x']}
-    right_end_final = {'x': -right_end_rotated['y'], 'y': right_end_rotated['x']}
-    
-    # Calculate final lane boundaries after the clockwise rotation
-    left_bound_x_final = [-left_start_final['y']+2, -left_corner_final['y']+2, -left_end_final['y']+2]
-    left_bound_y_final = [left_start_final['x']-765, left_corner_final['x']-765, left_end_final['x']-765]
-    
-    right_bound_x_final = [-right_start_final['y']+2, -right_corner_final['y']+2, -right_end_final['y']+2]
-    right_bound_y_final = [right_start_final['x']-765, right_corner_final['x']-765, right_end_final['x']-765]
-    
-    # Plot final lane boundaries
-    plt.plot(left_bound_x_final, left_bound_y_final, 'r', label='Left Lane Boundary')
-    plt.plot(right_bound_x_final, right_bound_y_final, 'b', label='Right Lane Boundary')
-    
-    plt.xlabel('X')  # Now represents the original Y values
-    plt.ylabel('Y')  # Now represents the original X values
-    plt.title('Vehicle Trajectory')
-    plt.grid(True)
-    plt.gca().set_aspect('equal', adjustable='box')
-    
 
 def calculate_angle(vec1, vec2):
     unit_vector_1 = vec1 / np.linalg.norm(vec1)
@@ -228,7 +146,7 @@ if __name__ == '__main__':
 
     """
     run carla by: 
-        ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=3000 &
+        ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=5000 &
     """    
 
     # For more repetitive results
@@ -237,9 +155,9 @@ if __name__ == '__main__':
 
     ###########################
     # Environment
-    carla_port = 4000
+    carla_port = 5000
     time_step  = 0.05 
-    map_train  = "/home/ubuntu-root/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
+    map_train  = "./maps/train.xodr"
 
     # vehicle state initialization
     def vehicle_reset_method_():
@@ -293,7 +211,7 @@ if __name__ == '__main__':
         # Load model
     
         data_dirs = [
-            'logs/MapC/04251704'
+            'logs/MapC/04251704'           
             #'./ITSC2024data/MapC/hoshino/04071140-19k'
             #'/home/ubuntu/extreme_driving/arnav/pirl_carla/ITSC2024data/MapC/hoshino/03250427'
             #'/home/ubuntu/extreme_driving/arnav/pirl_carla/ITSC2024data/MapC/hoshino/04030520'
@@ -320,7 +238,6 @@ if __name__ == '__main__':
 
         agentOp = agentOptions(
             DISCOUNT   = 1, 
-            #OPTIMIZER  = Adam(learning_rate=1e-4),
             REPLAY_MEMORY_SIZE = 5000, 
             REPLAY_MEMORY_MIN  = 1000,
             MINIBATCH_SIZE     = 32,
@@ -359,7 +276,6 @@ if __name__ == '__main__':
         # Plot vehicle trajectory
         x3 = positions3[0,:]# * 3 - 25
         y3 = positions3[1,:]# + 1080
-        plt.title("25K trained agent trajectories")
         plt.plot(y3, x3, color='blue', alpha=0.5, lw=0.5, label=f"vehicle {i+1}")
         plt.scatter(y3[0], x3[0], color='blue', marker='x')
 
@@ -375,8 +291,9 @@ if __name__ == '__main__':
     # Plot slip angle
     plt.figure(figsize=(10, 5))
     for i, s in enumerate(slip_angles_all):
-        smoothed_s = pd.Series(s).rolling(window=5).mean()
-        plt.plot(time_steps, smoothed_s, label=f'Slip Angle {i+1}')
+        #smoothed_s = pd.Series(s).rolling(window=5).mean()
+        #plt.plot(time_steps, smoothed_s, label=f'Slip Angle {i+1}')
+        plt.plot(time_steps, s, label=f'Slip Angle {i+1}')
     plt.xlabel('Time (seconds)')
     plt.ylabel('Slip Angle (degrees)')
     plt.title('Slip Angle vs Time')
@@ -387,8 +304,10 @@ if __name__ == '__main__':
     # Plot yaw rate
     plt.figure(figsize=(10, 5))
     for i, y in enumerate(yaw_rates_all):
-        smoothed_y = pd.Series(y).rolling(window=5).mean()
-        plt.plot(time_steps, smoothed_y, label=f'Yaw Rate {i+1}')
+        #smoothed_y = pd.Series(y).rolling(window=5).mean()
+        #plt.plot(time_steps, smoothed_y, label=f'Yaw Rate {i+1}')
+        plt.plot(time_steps, y, label=f'Yaw Rate {i+1}')
+
     plt.xlabel('Time (seconds)')
     plt.ylabel('Yaw Rate (degrees/second)')
     plt.title('Yaw Rate vs Time')

@@ -13,8 +13,9 @@ from torch.optim import Adam
 
 # PIRL agent
 from rl_agent.PIRL_torch import PIRLagent, agentOptions, train, trainOptions, pinnOptions
-from rl_env.carla_env import CarEnv, spawn_train_map_c_north_east
+from rl_env.carla_env import CarEnv
 
+###############################################################################
 # carla environment
 class Env(CarEnv):
     
@@ -54,7 +55,7 @@ def convection_model(s_and_actIdx):
     beta  = x[1]*(3.14/180) # deg -> rad
     vy    = vx*np.tan(beta)
     omega = x[2]*(3.14/180) # deg/s -> rad/s  
-    lat_e = x[3]            # m
+    #lat_e = x[3]            # m
     psi   = x[4]*(3.14/180) # deg -> rad              
 
     actIdx = int(s_and_actIdx[-1]) 
@@ -172,10 +173,11 @@ if __name__ == '__main__':
 
     ###########################################################################
     # Environment
-    carla_port = 4000
-    time_step  = 0.05    
-    map_train  = "/home/ubuntu/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
+    carla_port = 3000
+    time_step  = 0.05
+
     restart    = False
+    
 
     # spawn method (initial vehicle location)
     def random_spawn_point(carla_env):
@@ -192,7 +194,7 @@ if __name__ == '__main__':
         y_loc    = np.random.uniform(-0.5,0.5) #np.random.uniform(-0.8,0.8)
         psi_loc  = 0 #np.random.uniform(-20,20)
         # velocity and yaw rate
-        vx = np.random.uniform(10,15)
+        vx = np.random.uniform(5,15)
         vy = 0 #0.5* float(vx * np.random.rand(1)) 
         yaw_rate = 0 #np.random.uniform(-360,360)       
         
@@ -204,11 +206,11 @@ if __name__ == '__main__':
     spec_mapC_NorthEast = {'x':-965, 'y':185, 'z':15, 'pitch':-45, 'yaw':120, 'roll':0} 
 
     env    = Env(port=carla_port, time_step=time_step,
-                 custom_map_path = None, #map_train,
+                 custom_map_path = None, 
                  actor_filter    = 'vehicle.audi.tt',  
                  spawn_method    = None, #spawn_train_map_c_north_east,
                  vehicle_reset   = vehicle_reset_method,                  
-                 spectator_init  = spec_town2, #None, #None
+                 spectator_init  = spec_town2, #None,
                  spectator_reset = False, #True 
                  )
     actNum = env.action_num
@@ -234,20 +236,20 @@ if __name__ == '__main__':
     
     agentOp = agentOptions(
         DISCOUNT   = 1, 
-        OPTIMIZER  = Adam(model.parameters(), lr=5e-4),
-        REPLAY_MEMORY_SIZE = 5000, 
+        OPTIMIZER  = Adam(model.parameters(), lr=5e-4), #ITSC2024 5e-4
+        REPLAY_MEMORY_SIZE = 10000,  #5000 
         REPLAY_MEMORY_MIN  = 1000,
-        MINIBATCH_SIZE     = 32,
-        EPSILON_INIT        = 1, 
-        EPSILON_DECAY       = 0.9998, 
-        EPSILON_MIN         = 0.01, #0.01
+        MINIBATCH_SIZE     = 256,  # 32
+        EPSILON_INIT        = 1,  
+        EPSILON_DECAY       = 0.9997, # 0.9998 
+        EPSILON_MIN         = 0.001, #0.01
         )
     
     pinnOp = pinnOptions(
         CONVECTION_MODEL = convection_model,
         DIFFUSION_MODEL  = diffusion_model,   
         SAMPLING_FUN     = sample_for_pinn,
-        WEIGHT_PDE       = 1e-3, #1e-4 
+        WEIGHT_PDE       = 1e-4, #1e-3 
         WEIGHT_BOUNDARY  = 1, 
         HESSIAN_CALC     = False,
         )
@@ -256,8 +258,7 @@ if __name__ == '__main__':
     #agent.load_weights('logs/Town2/03192036', ckpt_idx='latest')
 
     ######################################
-    # Training option
-    
+    # Training option    
     if restart == True:
         LOG_DIR = "logs/Town2/03201826/"
         ckp_path = agent.load_weights(LOG_DIR, ckpt_idx='latest')
@@ -278,7 +279,7 @@ if __name__ == '__main__':
         SHOW_PROGRESS = True, 
         LOG_DIR     = LOG_DIR,
         SAVE_AGENTS = True, 
-        SAVE_FREQ   = 1000,
+        SAVE_FREQ   = 5000,
         RESTART_EP  = current_ep
         )
     agentOp['RESTART_EP'] = current_ep

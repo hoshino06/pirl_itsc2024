@@ -19,7 +19,7 @@ from training_pirl_Town2 import Env, convection_model, diffusion_model, sample_f
 ###########################################################################
 # Settings
 
-carla_port = 4000
+carla_port = 5000
 time_step  = 0.05    
 spec_town2 = {'x':-7.39, 'y':312, 'z':10.2, 'pitch':-20, 'yaw':-45, 'roll':0}    
 
@@ -68,7 +68,8 @@ def load_agent(env):
         )    
     
     agent  = PIRLagent(model, actNum, agentOp, pinnOp)
-    agent.load_weights('ITSC2024data/Town2/04291642', ckpt_idx=40_000) 
+    #agent.load_weights('ITSC2024data/Town2/04291642', ckpt_idx=40_000) 
+    agent.load_weights('logs/Town2/07231829', ckpt_idx=50_000) 
     
     return agent
 
