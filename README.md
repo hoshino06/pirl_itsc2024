@@ -24,6 +24,10 @@
 
 ## Lane keeping with normal cornering
 
+<div align=center> 
+<img src="./pirl_carla/plot/simulation.gif" width=270 alt="Normal cornering"/>
+</div>
+
 - Run training script:
   ```console
   ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=2000 &
@@ -31,7 +35,13 @@
   python training_pirl_Town2.py
   tensorboard --logdir logs/
   ```
-
+  
+- Run verification script:
+  ```console
+   ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=3000 &
+  conda activate pirl_carla
+  python verification_Town2.py
+  ```
 
 ## Safe drifting
 
