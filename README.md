@@ -14,15 +14,19 @@
 
 ## Start and Test Simulator
 
-- We tested codes on CARLA installed via [Package installation](https://carla.readthedocs.io/en/0.9.15/start_quickstart/#b-package-installation)
-- After the installation, run CARLA while specifying the port (assume simulator is installed in `~carla/calra_0_9_15/`):
-```console
- ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=2000 &
-```
-- Run test code to make sure python API is available:
-```console
- python test_carla.py 
-```
+1. We tested codes on CARLA installed via [Package installation](https://carla.readthedocs.io/en/0.9.15/start_quickstart/#b-package-installation)
+2. After the installation, run CARLA while specifying the port (assume simulator is installed in `~carla/calra_0_9_15/`):
+   ```console
+    ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=2000 &
+   ```
+3. Run test code to make sure python API is available (if it fails, see step 4):
+   ```console
+    python test_carla.py 
+   ```
+4. Rewrite the path to carla API at line 18 of `pirl_carla/rl_env/carla_env.py`
+   ```python
+    path_to_carla = os.path.expanduser("~/carla/carla_0_9_15")
+   ```
 
 ## Lane keeping with normal cornering
 
@@ -33,6 +37,7 @@
 - Run training script:
   ```console
   ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=2000 &
+  cd pirl_carla
   conda activate pirl_carla
   python training_pirl_Town2.py
   tensorboard --logdir logs/
