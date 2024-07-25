@@ -503,6 +503,9 @@ class CarEnv:
         
         return x_vehicle
 
+    ###########################################################################
+    # get waypoints (in world coordinate)
+    ###########################################################################
     def fetch_relative_states(self, wp_transform, interval, next_num)->(list, list):
         
         world_map = self.world.get_map()
@@ -523,53 +526,51 @@ class CarEnv:
             wp_transform = waypoint.transform
             #draw_path(wp_transform.location, self.world, life_time=1.0)
             wp_transform_list.append(wp_transform)
-            relative_x.append(wp_transform.location.x-x)
-            relative_y.append(wp_transform.location.y-y)
+            relative_x.append(wp_transform.location.x-x) # lateral direction
+            relative_y.append(wp_transform.location.y-y) # longitudinal direction
         result = relative_x + relative_y
         return result, wp_transform_list
-        
+   
+    ###########################################################################
+    # get vehicle state wrt road
+    ###########################################################################     
     def getRoadState(self):
         
-        # Get vehicle location
+        #########################
+        # Get vehicle location and rotation
+        ##########################
+        # World coordinate
         vehicle_trans = self.vehicle.get_transform()  
         vehicle_locat = vehicle_trans.location
         vehicle_rotat = vehicle_trans.rotation 
-        x   = vehicle_locat.x
-        y   = vehicle_locat.y
-        yaw = vehicle_rotat.yaw
 
         # Get nearby waypoint
         world_map = self.world.get_map()
-        
         way_point = world_map.get_waypoint(vehicle_locat, project_to_road=True)    
         if self.custom_map_path and way_point.lane_width < 20:
             right_way_point = way_point.get_right_lane()
             left_way_point = way_point.get_left_lane()
-            way_point = right_way_point if right_way_point.lane_width > left_way_point.lane_width else left_way_point
-                
-        #assert way_point.lane_width > 20, "waypoint from wrong lane"
-        
-        #draw_path(way_point.transform.location, self.world, life_time=10.0)
-        wp_transform = way_point.transform
-        interval = self.waypoint_itvl
-        next_num = 5
-        vector_list, future_wp_list = self.fetch_relative_states(wp_transform, interval, next_num)
-        x_rd   = way_point.transform.location.x
-        y_rd   = way_point.transform.location.y
-        yaw_rd = way_point.transform.rotation.yaw
-        #road_state = []
-        #for wp_t in future_wp_list:
-        loc_x, loc_y  = self.coordinate_w2l(vehicle_locat, way_point.transform)
+            way_point = right_way_point if right_way_point.lane_width > left_way_point.lane_width else left_way_point        
 
-        # Error variables
-        
-        #e   = np.linalg.norm( [x - x_rd, y - y_rd] )
+        loc_x, loc_y  = self.coordinate_w2l(vehicle_locat, way_point.transform)        
+
+        # relative angle
+        yaw_rd = way_point.transform.rotation.yaw
+        yaw = vehicle_rotat.yaw
         psi = yaw - yaw_rd 
         if psi < -180:
             psi += 360
         if psi > 180:
             psi -= 360
         psi = psi / 180.0 * 3.141592653	
+
+        ############################
+        # get way points
+        ############################        
+        wp_transform = way_point.transform
+        interval = self.waypoint_itvl
+        next_num = 5
+        vector_list, future_wp_list = self.fetch_relative_states(wp_transform, interval, next_num)        
         
         # print(f'veh=[{x:.1f},{y:.1f}], rd=[{x_rd:.1f},{y_rd:.1f}], e={e:.1f}')
         # print(f'yaw={yaw_rd:.1f}, yaw_rd={yaw_rd:.1f}, psi={psi:.1f}')

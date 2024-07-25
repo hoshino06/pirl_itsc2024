@@ -92,16 +92,17 @@ if __name__ == '__main__':
 
     """
     run carla by: 
-        ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=5000 &
+        ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=3000 &
     """
 
     ####################################
     # Settings
     ####################################
-    data_dir    = 'logs/Town2/07231829'
+    data_dir    = 'ITSC2024data/Town2/04291642'
+    #data_dir    = 'logs/Town2/07231829'
     check_point = 'latest'
 
-    carla_port = 5000
+    carla_port = 3000
     time_step  = 0.05 
     video_save = None #'plot/Town2/simulation.mp4'
     spec_town2 = {'x':-7.39, 'y':312, 'z':10.2, 'pitch':-20, 'yaw':-45, 'roll':0}  #spectator coordinate  

@@ -167,13 +167,9 @@ if __name__ == '__main__':
         ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=3000 &
     """    
 
-    # For more repetitive results
-    random.seed(1)
-    np.random.seed(1)
-
     ###########################################################################
-    # Environment
-    carla_port = 3000
+    # Settings
+    carla_port = 2000
     time_step  = 0.05
 
     restart    = False
@@ -191,7 +187,7 @@ if __name__ == '__main__':
         
         # position and angle
         x_loc    = 0
-        y_loc    = np.random.uniform(-0.5,0.5) #np.random.uniform(-0.8,0.8)
+        y_loc    = np.random.uniform(-0.8,0.8) #np.random.uniform(-0.8,0.8)
         psi_loc  = 0 #np.random.uniform(-20,20)
         # velocity and yaw rate
         vx = np.random.uniform(5,15)
@@ -225,6 +221,8 @@ if __name__ == '__main__':
                 nn.Linear(obsNum, 32),
                 nn.Tanh(),
                 nn.Linear(32, 32),
+                nn.Tanh(),
+                nn.Linear(32, 32), 
                 nn.Tanh(),
                 nn.Linear(32, actNum),
                 nn.Sigmoid()
@@ -285,7 +283,11 @@ if __name__ == '__main__':
     agentOp['RESTART_EP'] = current_ep
 
     ######################################
-    # Train 
+    # Training
+    ######################################
+    random.seed(1)
+    np.random.seed(1)
+
     try:  
         train(agent, env, trainOp)
         
