@@ -263,7 +263,7 @@ if __name__ == '__main__':
         current_ep = int(ckp_path.split('-')[-1].split('.')[0])
         print(current_ep)
     else:
-        LOG_DIR = 'logs/Town2/'+datetime.now().strftime('%m%d%H%M')
+        LOG_DIR = 'logs/Town2/0725/'+datetime.now().strftime('%H%M')
         current_ep = None
         
     #LOG_DIR = None

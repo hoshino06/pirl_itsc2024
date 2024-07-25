@@ -24,8 +24,8 @@ key        =  ["e", "psi"] # v or psi
 
 log_dir = 'ITSC2024data/Town2/04291642'
 #log_dir     = 'logs/Town2/07231829'
-#log_dir     = 'logs/Town2/07241652'
-check_point = 50_000 
+log_dir     = 'logs/Town2/07251044'
+check_point = 45_000 
 
 ###########################################################################
 # Load PIRL agent and carla environment     
@@ -39,6 +39,8 @@ def load_agent(env, log_dir):
             super().__init__()
             self.linear_stack = nn.Sequential(
                 nn.Linear(obsNum, 32),
+                nn.Tanh(),
+                nn.Linear(32, 32),
                 nn.Tanh(),
                 nn.Linear(32, 32),
                 nn.Tanh(),
@@ -105,10 +107,10 @@ if __name__ == '__main__':
         ##############################
            
         rslu = 50
-        psi_scale = 0.4
+        psi_scale = 0.3
         e_scale = 1.0
         e_list = np.linspace(-e_scale, e_scale, rslu)
-        v_list = np.linspace(6, 20, rslu)
+        v_list = np.linspace(5, 25, rslu)
         psi_list = np.linspace(-psi_scale, psi_scale, rslu)
         
         #############################
@@ -116,7 +118,6 @@ if __name__ == '__main__':
         #############################
         interval = 0.5
         next_num = 0
-        
         
         if key[1]=="psi":
             eps = 0.1 # initial distance
@@ -158,7 +159,7 @@ if __name__ == '__main__':
         #################################       
         # Save and plot results
         ##################################
-        np.savez(f"plot/Town2/safe_prob_{key[0]}_{key[1]}.npz", x=e_list, y=y_list, z=safe_p)
+        #np.savez(f"plot/Town2/safe_prob_{key[0]}_{key[1]}.npz", x=e_list, y=y_list, z=safe_p)
         contour_plot(x=e_list, y=y_list, z=safe_p, key=key,
                      filename=f'plot/Town2/safe_prob_{key[0]}_{key[1]}.png')
 
