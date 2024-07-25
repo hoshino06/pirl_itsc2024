@@ -9,7 +9,7 @@
 4. Install [Anaconda](https://www.anaconda.com/), which is a package manager, environment manager, and Python distribution.
 5. Setup conda environment
    ```console
-    conda env create -f environment_pirl_carla.yaml
+    conda env create -f environment_pirl_carla.yml
    ```
 
 ## Start and Test Simulator
