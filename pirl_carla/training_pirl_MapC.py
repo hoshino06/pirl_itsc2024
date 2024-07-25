@@ -7,6 +7,7 @@ Created on Fri Feb 23 14:58:23 2024
 import numpy as np
 import random
 from datetime import datetime
+import argparse 
 
 from torch import nn
 from torch.optim import Adam
@@ -15,6 +16,7 @@ from torch.optim import Adam
 from rl_agent.PIRL_torch import PIRLagent, agentOptions, train, trainOptions, pinnOptions
 from rl_env.carla_env import CarEnv, spawn_train_map_c_north_east, map_c_before_corner
 
+##############################################################
 # carla environment
 class Env(CarEnv):
     
@@ -55,7 +57,7 @@ def convection_model(s_and_actIdx):
     beta  = x[1]*(3.14/180) # deg -> rad
     vy    = vx*np.tan(beta)
     omega = x[2]*(3.14/180) # deg/s -> rad/s  
-    lat_e = x[3]            # m
+    #lat_e = x[3]            # m
     psi   = x[4]*(3.14/180) # deg -> rad              
 
     actIdx = int(s_and_actIdx[-1]) 
@@ -163,26 +165,34 @@ if __name__ == '__main__':
 
     """
     run carla by: 
-        ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=5000 &
+        ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=4000 &
     """    
-
-    # For more repetitive results
-    random.seed(1)
-    np.random.seed(1)
-
-    ###########################################################################
-    # Environment
-    carla_port = 5000
+    ######################################
+    # Settings
+    ######################################
+    carla_port = 4000
     time_step  = 0.05    
-    map_train  = "/home/ubuntu-root/carla/carla_drift_0_9_5/CarlaUE4/Content/Carla/Maps/OpenDrive/train.xodr"
+    map_train  = "./maps/train.xodr"
 
+    #######################################
+    # arg parse
+    #######################################
+    parser = argparse.ArgumentParser() 
+    parser.add_argument('--port') 
+    args = parser.parse_args() 
+    
+    if args.port:
+        carla_port = int(args.port)
+    
+    ###############################################################
+    # Environment
+    ###############################################################
     # spawn method (initial vehicle location)
     def random_spawn_point(carla_env):
         sp_list     = carla_env.get_all_spawn_points()       
         rand_1      = np.random.randint(0,len(sp_list))
         spawn_point = sp_list[rand_1]
         return spawn_point
-
 
     # vehicle state initialization
     def vehicle_reset_method():
@@ -192,16 +202,13 @@ if __name__ == '__main__':
         psi_loc  = 0 #np.random.uniform(-20,20)
         # velocity and yaw rate
         vx       = 30 #np.random.uniform(15,25)
-        #vy       = -0.5*vx*np.random.uniform(0.5, 1.0)
-        #yaw_rate = 80     *np.random.uniform(0.5, 1.0)
         vy       = -vx*np.random.uniform( np.tan(15/180*3.14), np.tan(30/180*3.14))
-        yaw_rate = np.random.uniform(50, 100)
+        yaw_rate = np.random.uniform(40, 80)
         
         # It must return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
         return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
 
     # Spectator_coordinate
-    spec_town2 = {'x':-7.39, 'y':312, 'z':10.2, 'pitch':-20, 'yaw':-45, 'roll':0}    
     spec_mapC_NorthEast = {'x':-965, 'y':185, 'z':15, 'pitch':-45, 'yaw':120, 'roll':0} 
 
     env    = Env(port=carla_port, time_step=time_step,
@@ -216,7 +223,6 @@ if __name__ == '__main__':
     actNum = env.action_num
     obsNum = len(env.reset())
 
-
     ###########################################################################
     # PIRL option    
     class NeuralNetwork(nn.Module):
@@ -227,6 +233,8 @@ if __name__ == '__main__':
                 nn.Tanh(),
                 nn.Linear(32, 32),
                 nn.Tanh(),
+                nn.Linear(32, 32),
+                nn.Tanh(), 
                 nn.Linear(32, actNum),
                 nn.Sigmoid()
                 )
@@ -238,11 +246,11 @@ if __name__ == '__main__':
     agentOp = agentOptions(
         DISCOUNT   = 1, 
         OPTIMIZER  = Adam(model.parameters(), lr=2e-4),
-        REPLAY_MEMORY_SIZE = 5000, 
-        REPLAY_MEMORY_MIN  = 100,
-        MINIBATCH_SIZE     = 32,
+        REPLAY_MEMORY_SIZE = 10000, 
+        REPLAY_MEMORY_MIN  = 1000,
+        MINIBATCH_SIZE     = 256, #32
         EPSILON_DECAY      = 0.9998, 
-        EPSILON_MIN        = 0.01,
+        EPSILON_MIN        = 0.001, #0.01
         )
     
     pinnOp = pinnOptions(
@@ -280,7 +288,7 @@ if __name__ == '__main__':
         SHOW_PROGRESS = True, 
         LOG_DIR       = LOG_DIR,
         SAVE_AGENTS   = True, 
-        SAVE_FREQ     = 5000,
+        SAVE_FREQ     = 10_000,
         RESTART_EP    = current_ep
         )
     agentOp['RESTART_EP'] = current_ep
@@ -288,6 +296,10 @@ if __name__ == '__main__':
 
     ######################################
     # Train 
+    ######################################
+    random.seed(1)
+    np.random.seed(1)
+
     try:  
      train(agent, env, trainOp)
      

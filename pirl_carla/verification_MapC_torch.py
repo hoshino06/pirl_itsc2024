@@ -3,6 +3,7 @@
 Created on Fri Feb 23 14:58:23 2024
 @author: hoshino
 """
+####################################
 # general packages
 import numpy as np
 import random
@@ -10,7 +11,9 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import splprep, splev
 from torch import nn
 
-# PIRL agent
+#######################################
+# PIRL agent and CarEnv
+#######################################
 from rl_agent.PIRL_torch import PIRLagent, agentOptions, pinnOptions
 from rl_env.carla_env   import CarEnv, map_c_before_corner, road_info_map_c_north_east
 from training_pirl_MapC import convection_model, diffusion_model, sample_for_pinn
@@ -39,7 +42,9 @@ class Env(CarEnv):
 
         return new_state, reward, done
 
-
+############################################
+# Simulation function
+############################################
 def closed_loop_simulation(agent, env, T):
     
     # initialization
@@ -140,43 +145,38 @@ def plot_lane_boundaries(waypoints, lane_width):
     #plt.show()
 
 
-################################################################################################
+###############################################################################
 # Main
+###############################################################################
 if __name__ == '__main__':
 
     """
     run carla by: 
         ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=5000 &
     """    
+    ####################################
+    # Settings
+    ####################################
 
-    # For more repetitive results
-    random.seed(1)
-    np.random.seed(1)
-
-    ###########################
-    # Environment
     carla_port = 5000
     time_step  = 0.05 
     map_train  = "./maps/train.xodr"
 
-    # vehicle state initialization
+    spec_mapC_NorthEast = {'x':-965, 'y':185, 'z':15, 'pitch':-45, 'yaw':120, 'roll':0} 
+
+    #################################
+    # Environment
+    #################################
     def vehicle_reset_method_():
-        # position and angle
         x_loc    = 0
         y_loc    = 0 
-        psi_loc  = 0 #np.random.uniform(-20,20)
-        # velocity and yaw rate
+        psi_loc  = 0  #np.random.uniform(-20,20)
         vx       = 30 #np.random.uniform(15,25)
         rand_num = -0.8   #np.random.uniform(-0.75, -0.85)
         vy       = 0.5*vx*rand_num 
-        yaw_rate = -80*rand_num 
-        
-        # It must return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
+        yaw_rate = -80*rand_num         
         return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]        
 
-    # Spectator_coordinate
-    spec_town2 = {'x':-7.39, 'y':312, 'z':10.2, 'pitch':-20, 'yaw':-45, 'roll':0}    
-    spec_mapC_NorthEast = {'x':-965, 'y':185, 'z':15, 'pitch':-45, 'yaw':120, 'roll':0} 
 
     #draw_lane_boundaries()
     untrained_slip_angles_all = []
@@ -197,6 +197,11 @@ if __name__ == '__main__':
     obsNum = len(env.reset())    
     
     #######################################################################
+    # For more repetitive results
+    random.seed(1)
+    np.random.seed(1)
+
+
     log_dir = 'plot/MapC/data_trained'
 
     # spawn_points in MapC
