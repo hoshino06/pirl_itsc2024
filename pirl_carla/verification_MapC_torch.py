@@ -7,7 +7,6 @@ Created on Fri Feb 23 14:58:23 2024
 import numpy as np
 import random
 import matplotlib.pyplot as plt
-from scipy.interpolate import splprep, splev
 from torch import nn
 
 # PIRL agent
@@ -40,6 +39,9 @@ class Env(CarEnv):
         return new_state, reward, done
 
 
+###########################################
+# Simulation function
+###########################################
 def closed_loop_simulation(agent, env, T):
     
     # initialization
@@ -78,67 +80,6 @@ def closed_loop_simulation(agent, env, T):
     return state_trajectory, vehicle_trajectory, waypoints
 
 
-def calculate_angle(vec1, vec2):
-    unit_vector_1 = vec1 / np.linalg.norm(vec1)
-    unit_vector_2 = vec2 / np.linalg.norm(vec2)
-    dot_product = np.dot(unit_vector_1, unit_vector_2)
-    angle = np.arccos(dot_product)
-    return angle
-
-def plot_lane_boundaries(waypoints, lane_width):
-    flattened_waypoints = [waypoint for sublist in waypoints for waypoint in sublist]
-    
-    left_boundaries = []
-    right_boundaries = []
-    prev_direction = None
-    prev_pos = np.array([flattened_waypoints[0].location.x, flattened_waypoints[0].location.y])
-
-    for i in range(1, len(flattened_waypoints)):
-        current_pos = np.array([flattened_waypoints[i].location.x, flattened_waypoints[i].location.y])
-        direction = current_pos - prev_pos
-        
-        if np.linalg.norm(direction) == 0:  # Skip if no movement or too far away
-            continue
-
-        if prev_direction is not None:
-            angle_change = calculate_angle(prev_direction, direction)
-            if angle_change > np.pi / 2:  # Discontinuity in direction
-                continue
-
-        prev_direction = direction
-        prev_pos = current_pos
-        
-        perp_direction = np.array([-direction[1], direction[0]]) / np.linalg.norm(direction)
-        
-        left_boundary = current_pos + perp_direction * (lane_width / 2)
-        right_boundary = current_pos - perp_direction * (lane_width / 2)
-        
-        left_boundaries.append(left_boundary.tolist())
-        right_boundaries.append(right_boundary.tolist())
-
-    # Convert to numpy array for spline fitting
-    left_boundaries = np.array(left_boundaries)
-    right_boundaries = np.array(right_boundaries)
-    
-    k = min(3, len(left_boundaries) - 1)  # Example: max degree 3
-    
-    tck, u = splprep([left_boundaries[:,1], left_boundaries[:,0]], s=0.5, k=k)  # s is a smoothing factor
-    left_y, left_x = splev(np.linspace(0, 1, 100), tck)
-    
-    tck, u = splprep([right_boundaries[:,1], right_boundaries[:,0]], s=0.5, k=k)
-    right_y, right_x = splev(np.linspace(0, 1, 100), tck)
-
-    plt.figure(figsize=(8, 6))
-    plt.plot(left_y, left_x, 'r', label='Left Boundary')
-    plt.plot(right_y, right_x, 'r', label='Right Boundary')
-    plt.xlabel('Y')
-    plt.ylabel('X')
-    plt.title('25K trained agent trajectories')
-    #plt.legend()
-    plt.grid(True)
-    plt.gca().set_aspect('equal', adjustable='box')
-    #plt.show()
-
 
 ################################################################################################
 # Main
@@ -167,9 +108,11 @@ if __name__ == '__main__':
         psi_loc  = 0 #np.random.uniform(-20,20)
         # velocity and yaw rate
         vx       = 30 #np.random.uniform(15,25)
-        rand_num = -0.8   #np.random.uniform(-0.75, -0.85)
-        vy       = 0.5*vx*rand_num 
-        yaw_rate = -80*rand_num 
+        #rand_num = -0.8   #np.random.uniform(-0.75, -0.85)
+        #vy       = 0.5*vx*rand_num 
+        #yaw_rate = -80*rand_num 
+        vy       = -vx*np.random.uniform( np.tan(30/180*3.14), np.tan(30/180*3.14))
+        yaw_rate = np.random.uniform(60, 60)
         
         # It must return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
         return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]        
@@ -211,7 +154,7 @@ if __name__ == '__main__':
         # Load model
     
         data_dirs = [
-            'logs/MapC/04251704'           
+            'logs/MapC/04251704'
             #'./ITSC2024data/MapC/hoshino/04071140-19k'
             #'/home/ubuntu/extreme_driving/arnav/pirl_carla/ITSC2024data/MapC/hoshino/03250427'
             #'/home/ubuntu/extreme_driving/arnav/pirl_carla/ITSC2024data/MapC/hoshino/04030520'
