@@ -30,7 +30,7 @@ class Env(CarEnv):
     def reset(self):
         carla_state = super().reset()
         print(carla_state[0:3])
-        horizon     = 5.0 # always reset with 5.0 (randomized in training)
+        horizon     = 6.0 # always reset with 5.0 (randomized in training)
         self.state = np.array( list(carla_state) + [horizon] )        
         return self.state
 

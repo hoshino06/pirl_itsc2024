@@ -26,7 +26,7 @@ class Env(CarEnv):
     def reset(self):
         carla_state = super().reset()
         #horizon     = 5.0 * np.random.rand()
-        horizon     = np.random.uniform(2.5, 5)
+        horizon     = np.random.uniform(4.0, 6.0)
         self.state = np.array( list(carla_state) + [horizon] )        
         return self.state
 
@@ -179,6 +179,7 @@ if __name__ == '__main__':
     #######################################
     parser = argparse.ArgumentParser() 
     parser.add_argument('--port') 
+    parser.add_argument('--lr') 
     args = parser.parse_args() 
     
     if args.port:
@@ -200,10 +201,18 @@ if __name__ == '__main__':
         x_loc    = 0
         y_loc    = 0 
         psi_loc  = 0 #np.random.uniform(-20,20)
+        ############
         # velocity and yaw rate
         vx       = 30 #np.random.uniform(15,25)
-        vy       = -vx*np.random.uniform( np.tan(15/180*3.14), np.tan(30/180*3.14))
-        yaw_rate = np.random.uniform(40, 80)
+        vy       = -vx*np.random.uniform( np.tan(20/180*3.14), np.tan(25/180*3.14))
+        yaw_rate = np.random.uniform(50, 70)
+        ###########
+        # velocity and yaw rate
+        # vx       = 30 #np.random.uniform(15,25)
+        # rand_num = np.random.uniform(0.75, 0.85)
+        # vy       = -0.5*vx*rand_num 
+        # yaw_rate = 80*rand_num 
+        
         
         # It must return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
         return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]
@@ -243,9 +252,13 @@ if __name__ == '__main__':
             return output    
     model = NeuralNetwork().to('cpu')
     
+    learning_rate = 1e-4
+    if args.lr:
+        learning_rate = float(args.lr)
+    
     agentOp = agentOptions(
         DISCOUNT   = 1, 
-        OPTIMIZER  = Adam(model.parameters(), lr=2e-4),
+        OPTIMIZER  = Adam(model.parameters(), lr=learning_rate),
         REPLAY_MEMORY_SIZE = 10000, 
         REPLAY_MEMORY_MIN  = 1000,
         MINIBATCH_SIZE     = 256, #32

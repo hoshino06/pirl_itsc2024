@@ -35,8 +35,8 @@ x =  boundary[:,1]
 y =  boundary[:,0]
 plt.plot(x, y, 'k-')
 
-plt.xlim([190,250])
-plt.ylim([-1005,-955])
+plt.xlim([185,240])
+plt.ylim([-1005,-958])
 
 plt.xlabel('y [m]')
 plt.ylabel('x [m]')
