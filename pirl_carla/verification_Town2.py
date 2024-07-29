@@ -98,13 +98,13 @@ if __name__ == '__main__':
     ####################################
     # Settings
     ####################################
-    data_dir    = 'ITSC2024data/Town2/04291642'
-    #data_dir    = 'logs/Town2/07231829'
+    #data_dir    = 'ITSC2024data/Town2/04291642'    
+    data_dir    = 'logs/Town2/0725/1640'
     check_point = 'latest'
 
     carla_port = 3000
     time_step  = 0.05 
-    video_save = None #'plot/Town2/simulation.mp4'
+    video_save = 'plot/Town2/simulation.mp4'
     spec_town2 = {'x':-7.39, 'y':312, 'z':10.2, 'pitch':-20, 'yaw':-45, 'roll':0}  #spectator coordinate  
 
     #################################
@@ -148,6 +148,8 @@ if __name__ == '__main__':
                 nn.Tanh(),
                 nn.Linear(32, 32),
                 nn.Tanh(),
+                nn.Linear(32, 32),
+                nn.Tanh(),
                 nn.Linear(32, actNum),
                 nn.Sigmoid()
                 )
@@ -159,7 +161,7 @@ if __name__ == '__main__':
     agentOp = agentOptions()
     pinnOp = pinnOptions(convection_model, diffusion_model, sample_for_pinn)    
     agent3  = PIRLagent(model, actNum, agentOp, pinnOp)
-    agent3.load_weights(data_dir, ckpt_idx='latest') 
+    agent3.load_weights(data_dir, ckpt_idx=check_point) 
 
     ######################################
     # Closed loop simulation

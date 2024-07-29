@@ -1,10 +1,8 @@
 import os
 import glob
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from tensorboard.backend.event_processing.plugin_event_accumulator import EventAccumulator, STORE_EVERYTHING_SIZE_GUIDANCE
-
 
 ###############################################################################
 # main
@@ -12,36 +10,53 @@ from tensorboard.backend.event_processing.plugin_event_accumulator import EventA
 if __name__ == '__main__':
 
     #################
-    # Data
+    # Data files
     #################
-    data_dir   = '../../ITSC2024data/Town2/04291642'
-    #data_dir   = '../../logs/Town2/07251044'
+    data_root_dir   = '../../logs/Town2/0725'
+    data_dirs = [os.path.join(data_root_dir, file) for file in os.listdir(data_root_dir)]
+    event_files = [ glob.glob(os.path.join(data_dir, "events*"))[0] for data_dir in data_dirs ]     
 
-    # Read event file
-    event_file = glob.glob(os.path.join(data_dir, "events*"))[0]
-    print(f'loading {event_file}')
-    acc = EventAccumulator(path=event_file, size_guidance=STORE_EVERYTHING_SIZE_GUIDANCE)
-    acc.Reload()
-
+    #########################
     # Extract learning data
-    ep_q0 = [t.tensor_proto.float_val[0] for t in acc.Tensors('Episode Q0')]
-    ep_rw = [t.tensor_proto.float_val[0] for t in acc.Tensors('Episode Reward')]
+    #########################
+    all_ep_q0 = pd.DataFrame()
+    all_ep_rw = pd.DataFrame()
+    
+    for i, event_file in enumerate(event_files):        
 
-    ep_q0 = pd.Series(ep_q0)
-    ep_rw = pd.Series(ep_rw)
+        print(f'loading {event_files[i]}')    
+        acc = EventAccumulator(path=event_files[i], size_guidance=STORE_EVERYTHING_SIZE_GUIDANCE)
+        acc.Reload()
 
+        ep_q0 = [t.tensor_proto.float_val[0] for t in acc.Tensors('Episode Q0')]
+        ep_rw = [t.tensor_proto.float_val[0] for t in acc.Tensors('Episode Reward')]
 
+        all_ep_q0[i] = pd.Series(ep_q0)
+        all_ep_rw[i] = pd.Series(ep_rw)
+
+    ############################
     # Averaging
-    data_avr_q0 = ep_q0.rolling(400).mean() 
-    data_avr_rw = ep_rw.rolling(400).mean() 
+    ############################
+    data_avr_q0 = all_ep_q0.rolling(100).mean() 
+    data_avr_rw = all_ep_rw.rolling(100).mean() 
+    mean_q0     = data_avr_q0.mean(axis=1)
+    std_q0      = data_avr_q0.std(axis=1)
+    mean_rw     = data_avr_rw.mean(axis=1)
+    std_rw      = data_avr_rw.std(axis=1)
 
+    #############################
     # Plot data
-    plt.plot(data_avr_q0, lw=1, label='Average Q value')
-    plt.plot(data_avr_rw, lw=1, label='Averge Episode Reward')
+    #############################
+    plt.plot(mean_q0, lw=1, label='Average Q value')
+    plt.plot(mean_rw, lw=1, label='Averge Episode Reward')
 
-    plt.xlim([0, 30_000])
+    plt.fill_between(range(len(mean_q0)), mean_q0 - std_q0, mean_q0 + std_q0, alpha=0.3, label='')
+    plt.fill_between(range(len(mean_rw)), mean_rw - std_rw, mean_rw + std_rw, alpha=0.3, label='')
+
+    plt.xlim([0, 50_000])
+    plt.ylim([0,1])
     plt.xlabel('Episodes')
     plt.ylabel('Average Reward')
-    plt.legend()
+    plt.legend(loc='lower right')
     
-    #plt.savefig('Town2_learning_curve.png', bbox_inches="tight")
+    plt.savefig('Town2_learning_curve.png', bbox_inches="tight")
