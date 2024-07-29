@@ -22,10 +22,9 @@ time_step  = 0.05
 spec_town2 = {'x':-7.39, 'y':312, 'z':10.2, 'pitch':-20, 'yaw':-45, 'roll':0}    
 key        =  ["e", "psi"] # v or psi 
 
-log_dir = 'ITSC2024data/Town2/04291642'
-#log_dir     = 'logs/Town2/07231829'
-log_dir     = 'logs/Town2/07251044'
-check_point = 45_000 
+#log_dir = 'ITSC2024data/Town2/04291642'
+log_dir     = 'logs/Town2/0725/1640'
+check_point = 'latest' 
 
 ###########################################################################
 # Load PIRL agent and carla environment     
@@ -107,7 +106,7 @@ if __name__ == '__main__':
         ##############################
            
         rslu = 50
-        psi_scale = 0.3
+        psi_scale = 0.4
         e_scale = 1.0
         e_list = np.linspace(-e_scale, e_scale, rslu)
         v_list = np.linspace(5, 25, rslu)
