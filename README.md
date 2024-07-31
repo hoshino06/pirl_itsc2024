@@ -4,7 +4,7 @@
 
 ## Requirements
 1. Tested on Ubuntu 22.04.4 LTS
-2. Nvidia GPU equipped, and driver Installed. Tested on GeForce RTX 3080. 
+2. Nvidia GPU equipped, and driver Installed. Tested on GeForce RTX 3080/RTX 6000 Ada. 
 3. Install [CARLA simulator](https://carla.org/), which is an open-source simulator for autonomous driving research. Tested on CARLA 0.9.15. 
 4. Install [Anaconda](https://www.anaconda.com/), which is a package manager, environment manager, and Python distribution.
 5. Setup conda environment
@@ -54,16 +54,22 @@
 
 Racing circuit is used for demonstrating safe drifting. Custom map developed in [drift_drl](https://github.com/caipeide/drift_drl) is used. 
 
+<div align=left> 
+<img src="./pirl_carla/plot/MapC/simulation.gif" width=300 alt="Normal cornering"/>
+</div>
 
 - Run training script:
   ```console
   ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=4000 &
+  cd pirl_carla
+  conda activate pirl_carla
   python training_pirl_MapC.py
   tensorboard --logdir logs/
   ```
 - Run verification scrpit:
   ```console
   ~/carla/carla_0_9_15/CarlaUE4.sh -carla-rpc-port=5000 &
+  conda activate pirl_carla
   python verification_MapC.py
   ```
 
