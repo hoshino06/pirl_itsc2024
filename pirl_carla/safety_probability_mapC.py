@@ -16,7 +16,7 @@ from training_pirl_MapC import Env, convection_model, diffusion_model, sample_fo
 ###########################################################
 # Settings
 ###########################################################
-log_dir = 'logs/MapC/07270815'
+log_dir = 'logs/MapC/07282145'
 
 carla_port = 5000
 time_step  = 0.05

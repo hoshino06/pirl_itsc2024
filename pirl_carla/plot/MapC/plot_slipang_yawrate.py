@@ -12,11 +12,9 @@ fig = plt.figure()
 ax1 = fig.add_subplot(2, 1, 1)
 ax2 = fig.add_subplot(2, 1, 2)
 
-
 for f in files:
 
     data = np.load(log_dir+f)    
-
     
     x    = data['state'][1,:] # * 3 - 25
     y    = data['state'][2,:] # + 1080

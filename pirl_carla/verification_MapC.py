@@ -77,7 +77,7 @@ def closed_loop_simulation(agent, env, T):
         #print(new_state[0:3])
  
         # position
-        vehicle_trajectory[:,i] = env.get_vehicle_position()    
+        vehicle_trajectory[:,i] = env.get_vehicle_position()  
         
     return state_trajectory, vehicle_trajectory, waypoints
 
@@ -94,17 +94,19 @@ if __name__ == '__main__':
     ####################################
     # Settings
     ####################################
-    data_dir    = "logs/MapC/07270815"
-    check_point = "latest"
+    data_dir    = "logs/MapC/5e-5/07282145"
+    check_point = 90_000
     
     log_dir     = 'plot/MapC/data_trained'
-    video_save  = None, #'plot/MapC/simulation.mp4'
+    video_save  = None #'plot/MapC/simulation.mp4'
 
     carla_port = 5000
     time_step  = 0.05 
     map_train  = "./maps/train.xodr"
-    spec_mapC_NorthEast = {'x':-965, 'y':185, 'z':15, 'pitch':-45, 'yaw':120, 'roll':0} 
-    spec_mapC_NorthEast = {'x':-960, 'y':200, 'z':18, 'pitch':-70, 'yaw':130, 'roll':0} 
+    spectator_view   = {'x':-965, 'y':185, 'z':15, 'pitch':-45, 'yaw':120, 'roll':0} 
+    #camera_view = {'x':-960, 'y':200, 'z':18, 'pitch':-70, 'yaw':130, 'roll':0} 
+    #camera_view = {'x':-970, 'y':195, 'z':15, 'pitch':-55, 'yaw':120, 'roll':0} 
+
 
     #################################
     # Environment
@@ -115,9 +117,9 @@ if __name__ == '__main__':
         psi_loc  = 0  
         vx       = 30
         vy       = -vx*np.random.uniform( np.tan(20/180*3.14), np.tan(25/180*3.14))
-        yaw_rate = np.random.uniform(65, 65)
+        yaw_rate = np.random.uniform(60, 70)
         
-        return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]        
+        return [x_loc, y_loc, psi_loc, vx, vy, yaw_rate]  
     
     env    = Env(port=carla_port, time_step=time_step,
                  custom_map_path = map_train,
@@ -125,9 +127,11 @@ if __name__ == '__main__':
                  spawn_method    = map_c_before_corner, 
                  vehicle_reset   = vehicle_reset_method_,
                  waypoint_itvl   = 3.0,
-                 spectator_init  = spec_mapC_NorthEast, 
+                 spectator_init  = spectator_view, 
                  spectator_reset = False, 
                  camera_save     = video_save,
+                 camera_view     = spectator_view,
+                 camera_fov      = 90,
                  )
     actNum = env.action_num
     obsNum = len(env.reset())    

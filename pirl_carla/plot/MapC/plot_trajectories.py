@@ -17,7 +17,6 @@ for f in files:
     plt.plot(x, y, color='blue', lw=0.5, zorder=10)
     plt.scatter(x[0], y[0], color='blue', marker='x')
 
-
 # Road
 road_info = np.load('spawn_points.npz')
 c_line    = road_info['center']
@@ -35,8 +34,8 @@ x =  boundary[:,1]
 y =  boundary[:,0]
 plt.plot(x, y, 'k-')
 
-plt.xlim([185,240])
-plt.ylim([-1005,-958])
+plt.xlim([185,250])
+plt.ylim([-1005,-955])
 
 plt.xlabel('y [m]')
 plt.ylabel('x [m]')

@@ -153,6 +153,8 @@ class CarEnv:
                  spectator_init  = None,
                  spectator_reset = True, 
                  camera_save     = None, 
+                 camera_view     = None,
+                 camera_fov      = 110,
                  waypoint_itvl   = 0.5, 
                  initial_speed   = 10):
         """
@@ -206,7 +208,7 @@ class CarEnv:
         # Create vehicle actor        
         blueprint_library = self.world.get_blueprint_library()
         self.bl = blueprint_library
-        vehicle_bp = blueprint_library.filter(self.actor_filter)[0]
+        self.vehicle_bp = blueprint_library.filter(self.actor_filter)[0]
         if self.spawn_method:         
             spawn_point = self.spawn_method(self)
             spawn_point.location.z = 0.5
@@ -215,7 +217,7 @@ class CarEnv:
             spawn_point.location.z = 0.5
         print(spawn_point)
         
-        self.vehicle = self.world.spawn_actor(vehicle_bp, spawn_point)
+        self.vehicle = self.world.spawn_actor(self.vehicle_bp, spawn_point)
         self.actor_list.append(self.vehicle)
         if self.autopilot:
             self.vehicle.set_autopilot(True, port)  # if you just wanted some NPCs to drive.
@@ -272,13 +274,23 @@ class CarEnv:
         ##############################
         # Set additional camera view
         if camera_save:
+            # camera transform
+            x = camera_view['x']
+            y = camera_view['y']
+            z = camera_view['z']
+            pitch = camera_view['pitch']
+            yaw   = camera_view['yaw']
+            roll  = camera_view['roll']
+            spec_loc  = carla.Location(x=x, y=y, z=z)
+            spec_rot  = carla.Rotation(pitch=pitch, yaw=yaw, roll=roll)
+            trans     = carla.Transform(spec_loc, spec_rot)            
             # width and highth
             self.IM_WIDTH, self.IM_HEIGHT = 640, 480
             # camera actor
             cam_bp = blueprint_library.find('sensor.camera.rgb')
             cam_bp.set_attribute('image_size_x', f'{self.IM_WIDTH}')
             cam_bp.set_attribute('image_size_y', f'{self.IM_HEIGHT}')
-            cam_bp.set_attribute('fov', '110')
+            cam_bp.set_attribute('fov', str(camera_fov))
             sensor = self.world.spawn_actor(cam_bp, trans)
             self.image_queue = queue.Queue()
             sensor.listen(self.image_queue.put)
@@ -734,12 +746,12 @@ def road_info_map_c_north_east(carla_env, num_sp):
         sp_points.append([x_rd, y_rd, yaw_rd])    
         
         # Left and right boundaries
-        x_loc, y_loc = [0, -8]
+        x_loc, y_loc = [0, -10]
         x_wld, y_wld = carla_env.local2world(x_loc, y_loc, yaw_rd)
         location     = way_point.transform.location + carla.Location(x=x_wld, y=y_wld, z=0)
         left_points.append([location.x, location.y])        
         
-        x_loc, y_loc = [0,  8]
+        x_loc, y_loc = [0,  10]
         x_wld, y_wld = carla_env.local2world(x_loc, y_loc, yaw_rd)
         location     = way_point.transform.location + carla.Location(x=x_wld, y=y_wld, z=0)
         right_points.append([location.x, location.y])        
