@@ -171,7 +171,7 @@ if __name__ == '__main__':
     # Settings
     ######################################
     carla_port = 4000
-    time_step  = 0.05    
+    time_step  = 0.05
     map_train  = "./maps/train.xodr"
 
     #######################################
