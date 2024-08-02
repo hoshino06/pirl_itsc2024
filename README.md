@@ -1,6 +1,11 @@
 # Autonomous Drifting Based on Maximal Safety Probability Learning
 *27th IEEE International Conference on Intelligent Transportation Systems (ITSC 2024)*
 
+<div align=left> 
+<img src="./pirl_carla/plot/Town2/simulation.gif" width=300 alt="Normal cornering"/>
+<img src="./pirl_carla/plot/MapC/simulation.gif" width=300 alt="Normal cornering"/>
+</div>
+
 
 ## Requirements
 1. Tested on Ubuntu 22.04.4 LTS
