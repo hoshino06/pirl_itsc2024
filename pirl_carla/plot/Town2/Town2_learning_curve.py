@@ -37,8 +37,8 @@ if __name__ == '__main__':
     ############################
     # Averaging
     ############################
-    data_avr_q0 = all_ep_q0.rolling(100).mean() 
-    data_avr_rw = all_ep_rw.rolling(100).mean() 
+    data_avr_q0 = all_ep_q0.rolling(500, min_periods=100).mean() 
+    data_avr_rw = all_ep_rw.rolling(500, min_periods=100).mean() 
     mean_q0     = data_avr_q0.mean(axis=1)
     std_q0      = data_avr_q0.std(axis=1)
     mean_rw     = data_avr_rw.mean(axis=1)
@@ -47,6 +47,7 @@ if __name__ == '__main__':
     #############################
     # Plot data
     #############################
+    plt.rcParams.update({'font.size': 12})    
     plt.plot(mean_q0, lw=1, label='Average Q value')
     plt.plot(mean_rw, lw=1, label='Averge Episode Reward')
 

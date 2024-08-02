@@ -70,7 +70,8 @@ def contour_plot(x, y, z, key = ["e", "psi"], filename=None):
     # Creating the contour plot
     plt.figure(figsize=(6, 4))
     contour = plt.contourf(x, y, z, cmap='viridis')
-    plt.colorbar(contour)  # Adding color bar to show z values
+    cbar = plt.colorbar(contour)  # Adding color bar to show z values    
+    plt.rcParams.update({'font.size': 15})    
     
     # Adding labels and title
     if key[0] == "e" and key[1] == 'psi':
