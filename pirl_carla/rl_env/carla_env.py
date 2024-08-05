@@ -220,7 +220,7 @@ class CarEnv:
         self.vehicle = self.world.spawn_actor(self.vehicle_bp, spawn_point)
         self.actor_list.append(self.vehicle)
         if self.autopilot:
-            self.vehicle.set_autopilot(True, port)  # if you just wanted some NPCs to drive.
+            self.vehicle.set_autopilot(True, 8000)  # if you just wanted some NPCs to drive.
             print('Vehicle was spawned with auto pilot mode')
 
         # Change paramters
